@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TOD Play MVP</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }
+  .box { border: 1px solid #ddd; padding: 16px; border-radius: 10px; margin-bottom: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { flex: 1 1 240px; }
+  label { display:block; font-weight:600; margin-bottom:6px; }
+  input[type="file"] { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+  button { background:#111827; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
+  img { max-width: 100%; border-radius: 10px; border:1px solid #eee; }
+  .pill { display:inline-block; padding:6px 10px; border:1px solid #ddd; border-radius:20px; margin-right:8px; margin-bottom:8px; }
+  .score { background:#f9fafb; padding:8px 12px; border-radius:8px; border:1px solid #eee; }
+</style>
+</head>
+<body>
+  <h1>TOD Play MVP</h1>
+
+  <div class="box">
+    <div class="row">
+      <div class="col">
+        <label>API Base URL</label>
+        <input id="api" value="http://127.0.0.1:8000" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px"/>
+      </div>
+      <div class="col">
+        <label>언어 (locale)</label>
+        <select id="locale" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px">
+          <option value="ko" selected>한국어</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="row">
+      <div class="col">
+        <label>원본 이미지 (ref, 선택)</label>
+        <input id="ref" type="file" accept="image/*"/>
+      </div>
+      <div class="col">
+        <label>실습 이미지 (draw)</label>
+        <input id="draw" type="file" accept="image/*"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <label>평가 항목</label>
+    <div>
+      <label class="pill"><input type="checkbox" class="chk" value="shape" checked/> 형태</label>
+      <label class="pill"><input type="checkbox" class="chk" value="value" checked/> 명암</label>
+      <label class="pill"><input type="checkbox" class="chk" value="color" checked/> 색감</label>
+      <label class="pill"><input type="checkbox" class="chk" value="perspective" checked/> 투시</label>
+      <label class="pill"><input type="checkbox" class="chk" value="composition" checked/> 구도</label>
+    </div>
+    <div style="margin-top:12px">
+      <button id="go">Analyze</button>
+      <span id="status" style="margin-left:12px; color:#6b7280"></span>
+    </div>
+  </div>
+
+  <div id="result" class="box" style="display:none">
+    <h3>결과</h3>
+    <div id="overlayBox"></div>
+    <div id="scores" style="margin-top:12px"></div>
+    <ul id="tips"></ul>
+  </div>
+
+<script>
+  async function analyze() {
+    const api = document.getElementById('api').value;
+    const ref = document.getElementById('ref').files[0];
+    const draw = document.getElementById('draw').files[0];
+    const locale = document.getElementById('locale').value;
+    const status = document.getElementById('status');
+    const btn = document.getElementById('go');
+
+    if(!draw){ alert('실습 이미지를 선택하세요'); return; }
+
+    let checks = Array.from(document.querySelectorAll('.chk:checked')).map(c=>c.value).join(',');
+
+    const fd = new FormData();
+    if(ref) fd.append('ref', ref);
+    fd.append('draw', draw);
+    fd.append('checks', checks);
+    fd.append('locale', locale);
+
+    btn.disabled = true;
+    status.textContent = '분석 중…';
+
+    try {
+      const res = await fetch(api + '/analyze', { method:'POST', body: fd });
+      const data = await res.json();
+      if(!data.ok){ throw new Error(data.error || 'API error'); }
+
+      const overlayUrl = api + data.overlay_url;
+      document.getElementById('overlayBox').innerHTML = '<img src="'+overlayUrl+'" alt="overlay result"/>';
+
+      const sc = data.scores || {};
+      document.getElementById('scores').innerHTML = Object.entries(sc).map(([k,v])=>{
+        return '<span class="score">'+k+': '+v+'</span>';
+      }).join(' ');
+
+      document.getElementById('tips').innerHTML = (data.tips||[]).map(t=>'<li>'+t+'</li>').join('');
+
+      document.getElementById('result').style.display='block';
+      status.textContent = '완료';
+    } catch(err){
+      console.error(err);
+      alert('오류: ' + err.message);
+      status.textContent = '실패';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  document.getElementById('go').addEventListener('click', analyze);
+</script>
+</body>
+</html>
