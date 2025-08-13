@@ -1,274 +1,390 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=1400, user-scalable=no" />
-<title>TOD play – Fixed MVP</title>
-<style>
-  /* ===== 고정 레이아웃 치수 ===== */
-  :root{
-    --w-sidenav: 120px;          /* 맨 왼쪽 세로 메뉴 */
-    --w-left:   360px;           /* 업로드 및 옵션 패널 */
-    --w-right:  380px;           /* 피드백 패널 */
-    --gap:      24px;
-    --stage-w:  990px;           /* 가운데 작업 캔버스 가로 */
-    --stage-h:  680px;           /* 가운데 작업 캔버스 세로 */
-    --bg: #0e1217; --panel:#141a22; --panel2:#10151c; --txt:#dbe3ee; --muted:#96a2b3;
-    --line:#2a3542; --line2:#334254; --blue:#2f7df4; --blue2:#4aa1ff; --chip:#1b2430; --chipOn:#2a3b51;
-  }
-  *{box-sizing:border-box} html,body{height:100%;background:var(--bg);color:var(--txt);margin:0;font:14px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  .page{
-    width: calc(var(--w-sidenav) + var(--w-left) + var(--gap) + var(--stage-w) + var(--gap) + var(--w-right));
-    min-height: calc(var(--stage-h) + 120px);
-    margin: 24px auto;
-    display: grid;
-    grid-template-columns: var(--w-sidenav) var(--w-left) var(--stage-w) var(--w-right);
-    grid-template-rows: auto;
-    column-gap: var(--gap);
-    align-items: start;
-  }
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 0 0 1px rgba(255,255,255,.02) inset}
-  .label{display:block; font-weight:700; margin:10px 12px 6px; color:#cfe2ff}
-  .sub{color:var(--muted); font-size:12px; margin:0 12px 10px}
-  .btn{background:#1a2633; border:1px solid var(--line2); color:#eaf2ff; padding:10px 14px; border-radius:10px; cursor:pointer}
-  .btn.primary{background: linear-gradient(90deg, var(--blue), var(--blue2)); border:none; color:white; font-weight:700}
-  .chips{display:flex; flex-wrap:wrap; gap:8px}
-  .chip{background:var(--chip); border:1px solid var(--line2); padding:6px 10px; border-radius:999px; cursor:pointer; user-select:none}
-  .chip.on{background:var(--chipOn); border-color:#446086}
-  .row{display:flex; gap:10px; align-items:center}
-  .muted{color:var(--muted)}
-  .hint{color:#9fb1c6; font-size:12px; text-align:center}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TOD play • MVP</title>
+  <style>
+    /* ---------- 기본 ---------- */
+    :root{
+      --bg:#0f1317;
+      --panel:#151b20;
+      --panel-2:#1b232b;
+      --panel-3:#1f2831;
+      --line:#2a3641;
+      --line-strong:#3a4a58;
+      --txt:#e7edf4;
+      --txt-dim:#a7b3bf;
+      --brand:#4ea8ff;
+      --brand-2:#2d7fe6;
+      --ok:#4cd4a8;
+      --warn:#ffcf66;
 
-  /* ===== 사이드 내비 ===== */
-  .sidenav{grid-column:1; position:sticky; top:24px}
-  .brand{display:flex; gap:8px; align-items:center; margin-bottom:14px; padding:10px; border-radius:10px}
-  .brand img{width:22px; height:22px}
-  .brand b{letter-spacing:.2px}
-  .navbtn{display:block; width:100%; padding:10px 8px; margin-bottom:8px; background:var(--panel); border:1px solid var(--line); color:var(--txt); border-radius:10px; text-align:center; cursor:pointer}
-  .navbtn:hover{border-color:#3b4a5f}
+      /* 레이아웃 변수 */
+      --sidebar-w: clamp(240px, 18vw, 320px);
+      --right-w: clamp(360px, 24vw, 460px);
+      --gap: 16px;
+      --radius: 10px;
+      --shadow: 0 6px 18px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
+      color:var(--txt); background:var(--bg);
+    }
+    a{color:inherit}
+    .app{
+      /* 화면 폭에 따라 자동 확장 + 여백 축소 */
+      max-width: 1920px;
+      margin: 0 auto;
+      padding: clamp(8px, 2vw, 18px);
+      display:grid;
+      grid-template-columns: var(--sidebar-w) 1fr var(--right-w);
+      gap: var(--gap);
+      min-height: 100dvh;
+    }
 
-  /* ===== 왼쪽 옵션 패널 ===== */
-  .left{grid-column:2; display:flex; flex-direction:column; gap:14px}
-  .store, .learn{padding:10px 10px 12px}
-  .drop{padding:12px}
-  .dz{
-    height:140px; background:var(--panel2); border:2px dashed #3a4a5e; border-radius:12px; display:grid; place-items:center; color:#b9c7d9
-  }
-  .dz input{display:none}
-  .dz .dz-tip{pointer-events:none}
-  .opts{padding:12px}
-  .opts .grp{margin:8px 0 12px}
-  .opts .grp .title{font-weight:700; margin-bottom:6px}
-  .optrow{display:flex; gap:8px; flex-wrap:wrap}
-  .radio{background:var(--chip); border:1px solid var(--line2); border-radius:8px; padding:6px 10px; cursor:pointer}
-  .radio input{display:none}
-  .radio.on{background:var(--chipOn); border-color:#466189}
-  .run{margin-top:8px; display:flex; justify-content:stretch}
-  .run .btn{flex:1; padding:12px}
+    /* ---------- 좌측 사이드 ---------- */
+    .side{
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .logo{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; background:var(--panel); border:1px solid var(--line);
+      border-radius:var(--radius);
+    }
+    .logo .dot{
+      width:18px;height:18px; border-radius:50%;
+      background:linear-gradient(135deg,var(--brand),#9bd0ff);
+      box-shadow:0 0 0 2px rgba(78,168,255,.2);
+    }
+    .logo strong{font-weight:700; letter-spacing:.3px}
 
-  /* ===== 가운데 스테이지(고정 크기) ===== */
-  .stageWrap{grid-column:3; position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px}
-  #stage{display:block; width:var(--stage-w); height:var(--stage-h); background:#fff; border-radius:12px}
+    .nav{
+      display:grid; gap:8px;
+    }
+    .nav button{
+      all:unset; display:flex; align-items:center; gap:10px;
+      padding:10px 12px; background:var(--panel); border:1px solid var(--line);
+      border-radius:var(--radius); cursor:pointer; color:var(--txt);
+    }
+    .nav button:hover{border-color:var(--line-strong); background:var(--panel-2)}
+    .nav .ico{width:18px; text-align:center; opacity:.9}
 
-  /* ===== 오른쪽 피드백 패널 ===== */
-  .right{grid-column:4; display:flex; flex-direction:column; gap:10px}
-  .right .hd{display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:10px; background:var(--panel); border:1px solid var(--line)}
-  .score{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px; min-height:44px}
-  .notes{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; min-height:360px; overflow:auto}
-  .chat{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px; display:flex; gap:8px; align-items:center}
-  .chat input{flex:1; background:#0f151c; border:1px solid var(--line2); border-radius:8px; padding:10px; color:var(--txt)}
-  .ico{width:36px; height:36px; border-radius:10px; background:#1a2430; border:1px solid var(--line2); color:#dbe6ff; display:grid; place-items:center; cursor:pointer}
+    .card{
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:var(--radius); padding:12px;
+    }
+    .card h6{margin:0 0 6px; font-size:12px; color:var(--txt-dim); font-weight:600; letter-spacing:.2px}
+    .drop{
+      margin-top:10px;
+      background:#0d1115; border:1px dashed var(--line-strong);
+      border-radius:8px; height:140px; display:grid; place-content:center; color:#cfd7df;
+    }
+    .drop input{display:none}
+    .drop p{margin:0; font-size:12px; opacity:.9}
+    .drop.drag{outline:2px solid var(--brand); outline-offset:2px}
 
-  /* 세세한 보정 */
-  .ver{color:#9eb2c9; font-size:12px}
-  .card-title{font-weight:700; margin:4px 0 8px 2px}
-</style>
+    .chips{display:flex; gap:6px; flex-wrap:wrap}
+    .chips label{
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--panel-2); border:1px solid var(--line);
+      border-radius:999px; padding:6px 10px; cursor:pointer;
+    }
+    .chips input{accent-color:var(--brand)}
+
+    .run{
+      position:sticky; bottom:0; margin-top:10px;
+      background:var(--panel); border:1px solid var(--line); padding:10px; border-radius:var(--radius);
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+    }
+    .btn{
+      all:unset; cursor:pointer; background:linear-gradient(180deg,var(--brand),var(--brand-2));
+      color:#fff; padding:11px 18px; border-radius:10px; font-weight:700; letter-spacing:.2px;
+      box-shadow:var(--shadow);
+    }
+    .btn:active{transform:translateY(1px)}
+
+    /* ---------- 중앙 스테이지 ---------- */
+    .stage-wrap{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      padding: 14px; display:flex; align-items:center; justify-content:center;
+      min-height: calc(100dvh - 120px);   /* 화면 높이에 맞춰 커짐 */
+    }
+    .stage{
+      width: min(1200px, 100%);
+      /* 정사각~가로 직사각 모두 유연 · 세로도 최대한 채움 */
+      aspect-ratio: 16/10;
+      background:#fff; border-radius:12px; box-shadow:var(--shadow);
+      position:relative; overflow:hidden;
+    }
+    canvas{width:100%; height:100%; display:block; background:#fff}
+
+    /* ---------- 우측 피드백 ---------- */
+    .right{
+      display:grid; grid-template-rows:auto 1fr auto; gap:10px;
+    }
+    .score{
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:var(--radius); padding:10px 12px; display:flex; justify-content:space-between; gap:8px;
+    }
+    .score b{color:#fff}
+    .log{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      padding:12px; overflow:auto;
+    }
+    .chat{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      padding:8px; display:flex; gap:8px; align-items:center;
+    }
+    .chat input{
+      flex:1 1 auto; background:var(--panel-3); border:1px solid var(--line);
+      border-radius:8px; color:var(--txt); padding:10px 12px;
+    }
+    .icon-btn{
+      all:unset; width:36px; height:36px; display:grid; place-content:center;
+      border-radius:10px; cursor:pointer; background:var(--panel-3); border:1px solid var(--line);
+      color:var(--txt-dim);
+    }
+    .icon-btn:hover{border-color:var(--line-strong); color:#fff}
+
+    /* ---------- 반응형 ---------- */
+    @media (max-width: 1280px){
+      :root{ --sidebar-w: 260px; --right-w: 380px; }
+      .stage{ aspect-ratio: 4/3; } /* 창이 작아지면 조금 더 세로형 */
+    }
+    @media (max-width: 1024px){
+      .app{
+        grid-template-columns: 1fr; grid-template-rows: auto auto auto;
+      }
+      .side, .right{order:1}
+      .stage-wrap{order:2}
+      .right{order:3}
+      .stage{width:100%; aspect-ratio: 3/2;}
+    }
+
+    /* ---------- 오버레이 정렬(선택) ---------- */
+    body.overlay::before{
+      content:""; position:fixed; inset:0; pointer-events:none;
+      background: center/contain no-repeat var(--ui-overlay, none);
+      opacity:.22; mix-blend-mode:screen; z-index:9999;
+    }
+    .overlay-toggle{
+      position:fixed; top:10px; right:calc(var(--right-w) + 24px);
+      z-index:10000; display:flex; gap:8px; align-items:center;
+      background:rgba(20,25,30,.6); border:1px solid var(--line); padding:6px 8px; border-radius:10px;
+      backdrop-filter:saturate(120%) blur(6px);
+    }
+    .overlay-toggle input[type="file"]{display:none}
+    .overlay-toggle label, .overlay-toggle button{
+      all:unset; padding:6px 10px; background:var(--panel-3); border:1px solid var(--line);
+      border-radius:8px; cursor:pointer; color:#cfe2f5;
+    }
+    .overlay-toggle label:hover, .overlay-toggle button:hover{border-color:var(--line-strong); color:#fff}
+  </style>
 </head>
 <body>
+  <!-- 오버레이 정렬 도우미(선택) -->
+  <div class="overlay-toggle">
+    <label for="ov-file">오버레이 이미지</label>
+    <button id="ov-toggle">표시/숨김</button>
+    <input id="ov-file" type="file" accept="image/*">
+  </div>
 
-<div class="page">
-
-  <!-- 좌측 세로 메뉴 -->
-  <aside class="sidenav">
-    <div class="brand">
-      <img src="logo.png" alt="">
-      <b>TOD play</b>
-    </div>
-    <button class="navbtn">가이드</button>
-    <button class="navbtn">탐색</button>
-    <button class="navbtn">구독</button>
-    <button class="navbtn">비즈니스</button>
-  </aside>
-
-  <!-- 업로드 + 옵션 패널 -->
-  <section class="left">
-
-    <div class="card store">
-      <span class="label">자료 데이터 저장소</span>
-      <p class="sub">자료를 저장하고 불러올 수 있습니다</p>
-    </div>
-
-    <div class="card learn">
-      <span class="label">학습 데이터 저장소</span>
-      <p class="sub">학습용 레퍼런스를 입력해 빠르게 불러올 수 있습니다</p>
-    </div>
-
-    <div class="card drop" id="ref-box">
-      <div class="card-title">원본 이미지</div>
-      <label class="dz" id="ref-dz">
-        <input id="ref" type="file" accept="image/*">
-        <div class="dz-tip">파일 선택 또는 드래그&드롭<br>(끊어오기 가능)</div>
-      </label>
-    </div>
-
-    <div class="card drop" id="stu-box">
-      <div class="card-title">실습 이미지</div>
-      <label class="dz" id="stu-dz">
-        <input id="stu" type="file" accept="image/*">
-        <div class="dz-tip">파일 선택 또는 드래그&드롭<br>(끊어오기 가능)</div>
-      </label>
-    </div>
-
-    <div class="card opts">
-      <div class="grp">
-        <div class="title">학습 유형 선택</div>
-        <div class="optrow" id="modes">
-          <label class="radio on"><input type="radio" name="mode" value="copy" checked>모작</label>
-          <label class="radio"><input type="radio" name="mode" value="style">스타일 모작</label>
-          <label class="radio"><input type="radio" name="mode" value="orig">창작</label>
-        </div>
+  <main class="app">
+    <!-- 좌측 -->
+    <aside class="side">
+      <div class="logo">
+        <span class="dot" aria-hidden="true"></span>
+        <strong>TOD play</strong>
       </div>
-      <div class="grp">
-        <div class="title">평가 항목 선택</div>
-        <div class="chips" id="chips">
-          <div class="chip on"  data-k="형태">형태</div>
-          <div class="chip on"  data-k="명암">명암</div>
-          <div class="chip"      data-k="색감">색감</div>
-          <div class="chip"      data-k="투시">투시</div>
-          <div class="chip"      data-k="구도">구도</div>
+
+      <nav class="nav" aria-label="기본 메뉴">
+        <button><span class="ico">📘</span>가이드</button>
+        <button><span class="ico">🧭</span>탐색</button>
+        <button><span class="ico">📰</span>구독</button>
+        <button><span class="ico">💼</span>비즈니스</button>
+      </nav>
+
+      <section class="card">
+        <h6>자료 데이터 저장소</h6>
+        <div class="drop" data-ref>
+          <input type="file" id="ref" accept="image/*" />
+          <p>파일 선택 또는 드래그&드롭<br>(끌어오기 가능)</p>
         </div>
+      </section>
+
+      <section class="card">
+        <h6>학습 데이터 저장소</h6>
+        <div class="drop" data-stu>
+          <input type="file" id="stu" accept="image/*" />
+          <p>파일 선택 또는 드래그&드롭<br>(끌어오기 가능)</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h6>학습 유형 선택</h6>
+        <div class="chips" id="mode">
+          <label><input type="radio" name="mode" value="copy" checked> 모작</label>
+          <label><input type="radio" name="mode" value="style"> 스타일 모작</label>
+          <label><input type="radio" name="mode" value="solo"> 창작</label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h6>평가 항목 선택</h6>
+        <div class="chips" id="aspects">
+          <label><input type="checkbox" value="형태" checked> 형태</label>
+          <label><input type="checkbox" value="명암" checked> 명암</label>
+          <label><input type="checkbox" value="색감"> 색감</label>
+          <label><input type="checkbox" value="투시"> 투시</label>
+          <label><input type="checkbox" value="구도"> 구도</label>
+        </div>
+      </section>
+
+      <div class="run">
+        <small style="color:var(--txt-dim)">이미지 업로드 후 분석을 시작하세요</small>
+        <button id="btn-run" class="btn">분석 시작</button>
       </div>
-      <div class="run"><button id="btn-run" class="btn primary">분석 시작</button></div>
-    </div>
+    </aside>
 
-  </section>
+    <!-- 중앙 -->
+    <section class="stage-wrap">
+      <div class="stage">
+        <canvas id="stage" width="1600" height="1000" aria-label="오버레이 출력 캔버스"></canvas>
+      </div>
+    </section>
 
-  <!-- 가운데 캔버스(고정 크기) -->
-  <section class="stageWrap card">
-    <canvas id="stage" width="990" height="680"></canvas>
-  </section>
+    <!-- 우측 -->
+    <aside class="right">
+      <div class="score"><div>평가 점수 •</div><b id="score">-</b><span style="opacity:.6">v0.2 MVP</span></div>
+      <div id="notes" class="log">
+        아직 분석을 시작하지 않았습니다. 좌측에서 이미지를 올리고 ‘분석 시작’을 눌러 주세요.
+      </div>
+      <div class="chat">
+        <input id="q" type="text" placeholder="의문점이 있으면 여기에 질문하세요" />
+        <button class="icon-btn" title="마이크(표시용)">🎤</button>
+        <button class="icon-btn" title="음성 응답(표시용)">🔊</button>
+      </div>
+    </aside>
+  </main>
 
-  <!-- 오른쪽 피드백 -->
-  <aside class="right">
-    <div class="hd">
-      <div><b>피드백 로그</b></div>
-      <div class="ver">v0.2 MVP</div>
-    </div>
-    <div id="score" class="score"></div>
-    <div id="notes" class="notes">아직 분석을 시작하지 않았습니다. 좌측에서 이미지를 올리고 ‘분석 시작’을 눌러 주세요.</div>
-    <div class="chat">
-      <input id="ask" placeholder="의문점이 있으면 여기에 질문하세요" />
-      <div class="ico" title="음성">🎤</div>
-      <div class="ico" title="전송">➤</div>
-    </div>
-  </aside>
+  <script>
+    /* ===== 드롭존 & 미리보기 ===== */
+    function mountDrop(zone){
+      const input = zone.querySelector('input');
+      zone.addEventListener('click',()=>input.click());
+      zone.addEventListener('dragover',e=>{e.preventDefault(); zone.classList.add('drag')});
+      zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+      zone.addEventListener('drop',e=>{
+        e.preventDefault(); zone.classList.remove('drag');
+        if(e.dataTransfer.files?.[0]) input.files = e.dataTransfer.files;
+      });
+    }
+    document.querySelectorAll('.drop').forEach(mountDrop);
 
-</div>
+    /* ===== 분석 버튼 → 백엔드 연동 ===== */
+    const btnRun = document.getElementById('btn-run');
+    const scoreEl = document.getElementById('score');
+    const notes = document.getElementById('notes');
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
 
-<script>
-/* ========== 작은 유틸 ========== */
-const $ = s => document.querySelector(s);
+    async function toBlobUrl(input){
+      if(!input?.files?.[0]) return null;
+      const file = input.files[0];
+      return URL.createObjectURL(file);
+    }
 
-/* 라디오/칩 토글 UI */
-for (const r of document.querySelectorAll('.radio')) {
-  r.addEventListener('click', () => {
-    document.querySelectorAll('.radio').forEach(x=>x.classList.remove('on'));
-    r.classList.add('on');
-    r.querySelector('input').checked = true;
-  });
-}
-for (const c of document.querySelectorAll('.chip')) {
-  c.addEventListener('click', ()=>c.classList.toggle('on'));
-}
+    btnRun.addEventListener('click', async ()=>{
+      const refInput = document.getElementById('ref');
+      const stuInput = document.getElementById('stu');
 
-/* 드래그&드롭 업로더 */
-function wireDrop(labelEl, inputEl){
-  ['dragenter','dragover'].forEach(ev=>labelEl.addEventListener(ev, e=>{e.preventDefault();labelEl.style.borderColor='#66a3ff'}));
-  ['dragleave','drop'].forEach(ev=>labelEl.addEventListener(ev, e=>{e.preventDefault();labelEl.style.borderColor='#3a4a5e'}));
-  labelEl.addEventListener('drop', e=>{
-    e.preventDefault();
-    const f = e.dataTransfer.files?.[0];
-    if(f){ inputEl.files = e.dataTransfer.files; }
-  });
-}
-wireDrop($('#ref-dz'), $('#ref'));
-wireDrop($('#stu-dz'), $('#stu'));
+      const refUrl = await toBlobUrl(refInput);
+      const stuUrl = await toBlobUrl(stuInput);
 
-/* 캔버스 그리기(오버레이 미리보기용) */
-const stage = $('#stage'), ctx = stage.getContext('2d');
-function drawOverlay(src){
-  if(!src) return;
-  const img = new Image();
-  img.onload = ()=>{
-    ctx.clearRect(0,0,stage.width,stage.height);
-    // 가운데 맞춰 contain
-    const sw = stage.width, sh = stage.height;
-    const rs = Math.min(sw/img.width, sh/img.height);
-    const dw = Math.round(img.width*rs), dh = Math.round(img.height*rs);
-    const dx = Math.floor((sw-dw)/2), dy = Math.floor((sh-dh)/2);
-    ctx.drawImage(img, dx, dy, dw, dh);
-  };
-  img.src = src;
-}
+      const form = new FormData();
+      if(refInput.files[0]) form.append('ref', refInput.files[0], 'ref.jpg');
+      if(stuInput.files[0]) form.append('stu', stuInput.files[0], 'stu.jpg');
+      // 모드 & 항목
+      const mode = document.querySelector('input[name="mode"]:checked')?.value ?? 'copy';
+      form.append('mode', mode);
+      const aspects = [...document.querySelectorAll('#aspects input:checked')].map(i=>i.value);
+      form.append('aspects', JSON.stringify(aspects));
 
-/* 백엔드 연동(기존 포맷 유지) */
-$('#btn-run').addEventListener('click', async ()=>{
-  const score  = $('#score');
-  const notes  = $('#notes');
-  score.textContent = '평가 중…';
+      notes.innerHTML = '<div>분석 요청 중…</div>';
 
-  // 선택값 모으기
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const aspects = [...document.querySelectorAll('.chip.on')].map(c=>c.dataset.k);
+      try{
+        const res = await fetch('http://127.0.0.1:8000/analyze', {method:'POST', body:form});
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
 
-  // 파일
-  const rf = $('#ref').files[0];
-  const sf = $('#stu').files[0];
-  if(!rf && !sf){ notes.textContent='원본/실습 이미지 중 최소 1개는 선택해 주세요.'; score.textContent=''; return }
+        // 점수 & 문장
+        scoreEl.textContent = (data.score ?? '-');
+        notes.innerHTML = '';
+        (data.scores || []).forEach(s=>{
+          const p = document.createElement('div');
+          p.style.marginBottom = '10px';
+          p.innerHTML = `<b>${s.name}</b> : ${s.value}`;
+          notes.appendChild(p);
+        });
+        if(data.feedback){
+          const div = document.createElement('div');
+          div.style.marginTop = '12px';
+          div.innerHTML = data.feedback;
+          notes.appendChild(div);
+        }
 
-  // 폼
-  const form = new FormData();
-  if(rf) form.append('ref', rf, rf.name || 'ref.jpg');
-  if(sf) form.append('stu', sf, sf.name || 'stu.jpg');
-  form.append('mode', mode);
-  form.append('aspects', JSON.stringify(aspects));
-
-  try{
-    const res = await fetch('http://127.0.0.1:8000/analyze', {method:'POST', body:form});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-
-    // 점수 필 Pills
-    score.innerHTML='';
-    (data.scores||[]).forEach(s=>{
-      const pill = document.createElement('span');
-      pill.style.cssText='display:inline-block;margin:4px 6px 0 0;padding:6px 10px;border-radius:999px;background:#1b2430;border:1px solid #2f3d52;font-weight:700';
-      pill.textContent = `${s.name} ${Math.round(s.value)}점`;
-      score.appendChild(pill);
+        // 오버레이
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        if(data.overlay){
+          const img = new Image();
+          img.onload = ()=>{
+            // 캔버스에 맞게 최대한 크게(가운데 정렬)
+            const sx = canvas.width / img.width;
+            const sy = canvas.height / img.height;
+            const s = Math.min(sx, sy);
+            const w = img.width * s, h = img.height * s;
+            const dx = (canvas.width - w)/2, dy = (canvas.height - h)/2;
+            ctx.drawImage(img, dx, dy, w, h);
+          };
+          img.src = data.overlay;
+        }else{
+          // 업로드 미리보기라도 보여주기
+          const img = new Image();
+          img.onload = ()=>{
+            const s = Math.min(canvas.width/img.width, canvas.height/img.height);
+            const w = img.width*s, h = img.height*s;
+            ctx.drawImage(img, (canvas.width-w)/2, (canvas.height-h)/2, w, h);
+          };
+          img.src = stuUrl || refUrl || '';
+        }
+      }catch(err){
+        console.warn(err);
+        notes.innerHTML = '<div style="color:#ffb4b4">백엔드 연결 실패 또는 오류가 발생했습니다.</div>';
+      }
     });
 
-    // 텍스트 피드백
-    notes.innerHTML = (data.feedback||[]).map(t=>`<div style="margin:8px 0;padding:10px;border:1px solid #2b394b;border-radius:8px;background:#0f151c">${t}</div>`).join('') || '피드백 없음';
+    /* ===== 오버레이 정렬 도우미 =====
+       1) /frontend 폴더에 당신의 초안 이미지를 넣고 버튼으로 선택
+       2) [표시/숨김]을 눌러 배경에 겹쳐 보면서 픽셀 단위 교정
+    */
+    const ovToggle = document.getElementById('ov-toggle');
+    const ovFile   = document.getElementById('ov-file');
+    let overlayOn = false;
 
-    // 오버레이 미리보기
-    if(data.overlay){ drawOverlay(data.overlay); }
-
-  }catch(e){
-    console.warn(e);
-    score.textContent='';
-    notes.innerHTML = '<div class="muted">백엔드에 연결되지 않았거나 오류가 발생했습니다.</div>';
-  }
-});
-</script>
+    ovToggle.addEventListener('click', ()=>{
+      overlayOn = !overlayOn;
+      document.body.classList.toggle('overlay', overlayOn);
+    });
+    ovFile.addEventListener('change', e=>{
+      const f = e.target.files?.[0];
+      if(!f) return;
+      const url = URL.createObjectURL(f);
+      document.documentElement.style.setProperty('--ui-overlay', `url("${url}")`);
+      if(!overlayOn){ overlayOn = true; document.body.classList.add('overlay'); }
+    });
+  </script>
 </body>
 </html>
