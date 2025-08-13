@@ -1,125 +1,356 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TOD Play MVP</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TOD play – MVP</title>
 <style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }
-  .box { border: 1px solid #ddd; padding: 16px; border-radius: 10px; margin-bottom: 16px; }
-  .row { display: flex; gap: 16px; flex-wrap: wrap; }
-  .col { flex: 1 1 240px; }
-  label { display:block; font-weight:600; margin-bottom:6px; }
-  input[type="file"] { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
-  button { background:#111827; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
-  img { max-width: 100%; border-radius: 10px; border:1px solid #eee; }
-  .pill { display:inline-block; padding:6px 10px; border:1px solid #ddd; border-radius:20px; margin-right:8px; margin-bottom:8px; }
-  .score { background:#f9fafb; padding:8px 12px; border-radius:8px; border:1px solid #eee; }
+  :root{
+    /* 어두운 톤 & 포커스 컬러 (약간 더 깊고 선명하게 조정) */
+    --bg:#0a0b0d; --panel:#111318; --muted:#98a1aa; --text:#e9edf2;
+    --accent:#6aa0ff; --accent-2:#7ee0ff;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --line:#23262d;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+
+  /* 레이아웃: 좌/중/우 3단 → 반응형에서 2단/1단으로 */
+  .wrap{
+    height:100vh; padding:16px; gap:18px;
+    display:grid;
+    grid-template-columns: 260px 1fr 380px;
+    grid-template-areas: "left mid right";
+  }
+  .side { grid-area:left; }
+  .mid  { grid-area:mid; }
+  .right{ grid-area:right; }
+
+  .side,.mid,.right{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  }
+  .side{padding:14px; display:flex; flex-direction:column; gap:12px;}
+  .mid {padding:12px; display:flex; align-items:center; justify-content:center;}
+  .right{display:flex; flex-direction:column;}
+
+  .brand{display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.2px; padding:6px 8px; margin-bottom:6px}
+
+  .nav{display:flex; flex-direction:column; gap:6px; margin-bottom:6px}
+  .nav a{display:flex; align-items:center; gap:8px; color:var(--muted); padding:8px 10px; border-radius:10px; text-decoration:none}
+  .nav a:hover{background:#181b24; color:var(--text)}
+
+  .pillbar{display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:2px}
+  .pill{background:#171a22; border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center; color:var(--muted); font-size:12px}
+
+  .zone{border:1px dashed #3a3d46; background:#10131a; border-radius:12px; padding:10px; height:220px; display:flex; flex-direction:column; gap:8px}
+  .zone h5{margin:0; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center}
+  .square{flex:1; background:#0f1218; border-radius:10px; display:grid; place-items:center; overflow:hidden; position:relative}
+  .square canvas,.square img{max-width:100%; max-height:100%; object-fit:contain}
+  .muted{color:var(--muted); font-size:12px}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap}
+  .btn{background:#1a1e28; border:1px solid var(--line); color:var(--text); padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:700}
+  .btn.primary{background:linear-gradient(135deg,#588afc,#68e1ff); color:#091016; border:none}
+  .btn:disabled{opacity:.55; cursor:not-allowed}
+
+  .seg{display:flex; background:#171b25; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  .seg button{flex:1; padding:8px 10px; background:transparent; color:var(--muted); border:none; cursor:pointer; font-weight:700}
+  .seg button.active{background:#24324a; color:#eaf2ff}
+
+  .checks{display:flex; gap:8px; flex-wrap:wrap}
+  .chk{display:flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line); border-radius:10px; background:#161a23}
+  .chk input{accent-color:var(--accent)}
+
+  .mid canvas{width:100%; height:100%; border-radius:10px}
+
+  .r-head{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line)}
+  .r-list{flex:1; overflow:auto; padding:12px 14px}
+  .card{background:#141824; border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px}
+  .badge{display:inline-flex; align-items:center; gap:6px; color:#cbd5e1; background:#0f172a; border:1px solid #1f2937; border-radius:999px; padding:2px 8px; font-size:12px}
+  .hint{color:#a8b0ba; font-size:12px; margin-top:6px}
+  .foot{padding:10px 14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:center}
+  .toggle{display:flex; align-items:center; gap:8px}
+  .toggle input{accent-color:var(--accent)}
+  .ghost{opacity:.7}
+  .filebtn{font-size:11px; padding:4px 8px; border-radius:8px; border:1px solid var(--line); background:#1b1f29; color:var(--text); cursor:pointer}
+  .drop{outline:2px dashed var(--accent-2)}
+
+  /* TOD line 툴팁 */
+  .tip{position:relative; display:flex; align-items:center; gap:8px; color:var(--muted); font-weight:700}
+  .tip .box{border:1px dashed #3b4150; border-radius:10px; padding:8px 10px; background:#121620}
+  .tip .pop{
+    position:absolute; left:100%; top:0; margin-left:10px; z-index:5;
+    min-width:160px; background:#0f1320; border:1px solid #283041; border-radius:10px; padding:8px 10px;
+    display:none; color:#cbd5e1; font-size:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .tip:hover .pop{display:block}
+  .pop ul{margin:6px 0 0 16px; padding:0}
+  .pop li{margin:2px 0}
+
+  /* 반응형 */
+  @media (max-width: 1280px){
+    .wrap{
+      grid-template-columns: 240px 1fr;
+      grid-template-areas:
+        "left mid"
+        "left right";
+    }
+    .right{min-height:40vh}
+  }
+  @media (max-width: 840px){
+    .wrap{
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "left"
+        "mid"
+        "right";
+      height:auto; min-height:100vh;
+    }
+  }
 </style>
 </head>
 <body>
-  <h1>TOD Play MVP</h1>
-
-  <div class="box">
-    <div class="row">
-      <div class="col">
-        <label>API Base URL</label>
-        <input id="api" value="http://127.0.0.1:8000" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px"/>
+  <div class="wrap">
+    <!-- LEFT -->
+    <aside class="side">
+      <div class="brand">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 10l-4 4M5 19l3-7 7-7 4 4-7 7-7 3z" stroke="#88b6ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        TOD play
       </div>
-      <div class="col">
-        <label>언어 (locale)</label>
-        <select id="locale" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px">
-          <option value="ko" selected>한국어</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-        </select>
-      </div>
-    </div>
-  </div>
 
-  <div class="box">
-    <div class="row">
-      <div class="col">
-        <label>원본 이미지 (ref, 선택)</label>
-        <input id="ref" type="file" accept="image/*"/>
-      </div>
-      <div class="col">
-        <label>실습 이미지 (draw)</label>
-        <input id="draw" type="file" accept="image/*"/>
-      </div>
-    </div>
-  </div>
+      <nav class="nav">
+        <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M3 6h18M3 18h18" stroke="#95a9c7" stroke-width="1.5"/></svg> 가이드</a>
+        <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10 20l-6-6 6-6" stroke="#95a9c7" stroke-width="1.5" stroke-linecap="round"/><path d="M20 20l-6-6 6-6" stroke="#95a9c7" stroke-width="1.5" stroke-linecap="round"/></svg> 탐색</a>
+        <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16H6z" stroke="#95a9c7" stroke-width="1.5"/><path d="M6 10h12" stroke="#95a9c7" stroke-width="1.5"/></svg> 구독</a>
+        <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 7h18M6 7v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" stroke="#95a9c7" stroke-width="1.5"/><path d="M9 7V5a3 3 0 0 1 6 0v2" stroke="#95a9c7" stroke-width="1.5"/></svg> 비즈니스</a>
+      </nav>
 
-  <div class="box">
-    <label>평가 항목</label>
-    <div>
-      <label class="pill"><input type="checkbox" class="chk" value="shape" checked/> 형태</label>
-      <label class="pill"><input type="checkbox" class="chk" value="value" checked/> 명암</label>
-      <label class="pill"><input type="checkbox" class="chk" value="color" checked/> 색감</label>
-      <label class="pill"><input type="checkbox" class="chk" value="perspective" checked/> 투시</label>
-      <label class="pill"><input type="checkbox" class="chk" value="composition" checked/> 구도</label>
-    </div>
-    <div style="margin-top:12px">
-      <button id="go">Analyze</button>
-      <span id="status" style="margin-left:12px; color:#6b7280"></span>
-    </div>
-  </div>
+      <div class="pillbar">
+        <div class="pill">자료 데이터 저장소<br><span class="muted">자료를 저장하고 불러올 수 있습니다</span></div>
+        <div class="pill">학습 데이터 저장소<br><span class="muted">학습 이력을 압축해 보고/출력</span></div>
+      </div>
 
-  <div id="result" class="box" style="display:none">
-    <h3>결과</h3>
-    <div id="overlayBox"></div>
-    <div id="scores" style="margin-top:12px"></div>
-    <ul id="tips"></ul>
+      <!-- TOD line 툴팁 박스 -->
+      <div class="tip">
+        <div class="box">TOD line ⓘ</div>
+        <div class="pop">
+          <div style="font-weight:700; margin-bottom:4px">서브 제품군</div>
+          <ul>
+            <li>TOD play — 임의대상 모사/피드백</li>
+            <li>TOD hero — 커리큘럼·가이드</li>
+            <li>TOD master — 전문가 리포트</li>
+            <li>TOD data — 데이터 관리</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="zone" id="zoneRef">
+        <h5>원본 이미지 <button class="filebtn" onclick="pick('ref')">파일 선택</button></h5>
+        <div class="square" id="squareRef"><span class="muted">끌어오기 가능</span></div>
+      </div>
+
+      <div class="zone" id="zoneStu">
+        <h5>실습 이미지 <button class="filebtn" onclick="pick('stu')">파일 선택</button></h5>
+        <div class="square" id="squareStu"><span class="muted">끌어오기 가능</span></div>
+      </div>
+
+      <div>
+        <div class="muted" style="margin:6px 0 4px">학습 유형 선택</div>
+        <div class="seg" id="modeSeg">
+          <button data-mode="copy" class="active">모작</button>
+          <button data-mode="style">스타일 모작</button>
+          <button data-mode="create">창작</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="muted" style="margin:6px 0 4px">평가 항목 선택</div>
+        <div class="checks" id="aspects">
+          <label class="chk"><input type="checkbox" checked value="shape"/> 형태</label>
+          <label class="chk"><input type="checkbox" value="value"/> 명암</label>
+          <label class="chk"><input type="checkbox" value="color"/> 색감</label>
+          <label class="chk"><input type="checkbox" value="persp"/> 투시</label>
+          <label class="chk"><input type="checkbox" value="comp"/> 구도</label>
+        </div>
+      </div>
+
+      <button class="btn primary" id="runBtn">분석 시작</button>
+      <div class="toggle hint">
+        <input type="checkbox" id="normalize" checked>
+        <label for="normalize">긴변 기준 정규화(스케일 동기화) 적용</label>
+      </div>
+      <div class="toggle hint">
+        <input type="checkbox" id="demoMode">
+        <label for="demoMode">데모 모드(백엔드 없이 시연)</label>
+      </div>
+
+      <!-- hidden inputs -->
+      <input type="file" id="fileRef" accept="image/*" hidden />
+      <input type="file" id="fileStu" accept="image/*" hidden />
+    </aside>
+
+    <!-- MIDDLE -->
+    <main class="mid">
+      <canvas id="canvas" width="1280" height="900"></canvas>
+    </main>
+
+    <!-- RIGHT -->
+    <aside class="right">
+      <div class="r-head">
+        <div class="badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M21 12a8 8 0 1 1-3.1-6.3L21 5l-.9 2.9A8 8 0 0 1 21 12z" stroke="#9ec1ff" stroke-width="1.3"/>
+          </svg>
+          피드백 로그
+        </div>
+        <div class="ghost" style="font-size:12px">v0.2 MVP</div>
+      </div>
+      <div class="r-list" id="log"></div>
+      <div class="foot">
+        <span class="hint">의문점이 있으면 여기에 질문하세요</span>
+        <span style="margin-left:auto" class="ghost">🎤 🔊</span>
+      </div>
+    </aside>
   </div>
 
 <script>
-  async function analyze() {
-    const api = document.getElementById('api').value;
-    const ref = document.getElementById('ref').files[0];
-    const draw = document.getElementById('draw').files[0];
-    const locale = document.getElementById('locale').value;
-    const status = document.getElementById('status');
-    const btn = document.getElementById('go');
+  const API_BASE = "http://127.0.0.1:8000"; // FastAPI endpoint
+  const canvas = document.getElementById('canvas');
+  const ctx     = canvas.getContext('2d');
 
-    if(!draw){ alert('실습 이미지를 선택하세요'); return; }
+  const state = { mode:'copy', refImg:null, stuImg:null, refData:null, stuData:null };
 
-    let checks = Array.from(document.querySelectorAll('.chk:checked')).map(c=>c.value).join(',');
+  function el(id){return document.getElementById(id)}
+  function log(msg, level='info'){
+    const box = document.createElement('div');
+    box.className = 'card';
+    const colors = {info:'#cbd5e1', ok:'#86efac', warn:'#fde68a', err:'#fecaca'};
+    box.innerHTML = `<div style="white-space:pre-wrap;color:${colors[level]||colors.info}">${msg}</div>`;
+    el('log').prepend(box);
+  }
 
-    const fd = new FormData();
-    if(ref) fd.append('ref', ref);
-    fd.append('draw', draw);
-    fd.append('checks', checks);
-    fd.append('locale', locale);
+  function pick(which){ el(which==='ref'?'fileRef':'fileStu').click(); }
+  function readFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+  async function setImage(which, dataURL){
+    const img = new Image();
+    img.onload = ()=>{
+      state[which+'Img']=img; state[which+'Data']=dataURL;
+      const sq = el(which==='ref'?'squareRef':'squareStu'); sq.innerHTML=''; const tag=document.createElement('img'); tag.src=img.src; sq.appendChild(tag);
+      drawOverlay();
+    };
+    img.src = dataURL;
+  }
 
-    btn.disabled = true;
-    status.textContent = '분석 중…';
+  function drawOverlay(overlay=null){
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.fillStyle = '#0e1016'; ctx.fillRect(0,0,canvas.width, canvas.height);
 
-    try {
-      const res = await fetch(api + '/analyze', { method:'POST', body: fd });
-      const data = await res.json();
-      if(!data.ok){ throw new Error(data.error || 'API error'); }
+    const pad=30, W=canvas.width-pad*2, H=canvas.height-pad*2;
+    const normalize = el('normalize').checked;
+    const ref=state.refImg, stu=state.stuImg;
+    if(!ref && !stu) return;
 
-      const overlayUrl = api + data.overlay_url;
-      document.getElementById('overlayBox').innerHTML = '<img src="'+overlayUrl+'" alt="overlay result"/>';
+    let rw=ref?.width||0, rh=ref?.height||0, sw=stu?.width||0, sh=stu?.height||0;
 
-      const sc = data.scores || {};
-      document.getElementById('scores').innerHTML = Object.entries(sc).map(([k,v])=>{
-        return '<span class="score">'+k+': '+v+'</span>';
-      }).join(' ');
+    function fit(w,h){ const r=Math.min(W/w, H/h); return {w:w*r,h:h*r}; }
 
-      document.getElementById('tips').innerHTML = (data.tips||[]).map(t=>'<li>'+t+'</li>').join('');
+    let refBox=null, stuBox=null;
+    if(ref && stu && normalize){
+      const rLong=Math.max(rw,rh), sLong=Math.max(sw,sh), target=Math.min(W,H);
+      refBox={w:rw*(target/rLong), h:rh*(target/rLong)};
+      stuBox={w:sw*(target/sLong), h:sh*(target/sLong)};
+    }else{
+      if(ref) refBox=fit(rw,rh);
+      if(stu) stuBox=fit(sw,sh);
+    }
+    function center(b){return {x:pad+(W-b.w)/2, y:pad+(H-b.h)/2};}
+    const rc=refBox?center(refBox):null, sc=stuBox?center(stuBox):null;
 
-      document.getElementById('result').style.display='block';
-      status.textContent = '완료';
-    } catch(err){
-      console.error(err);
-      alert('오류: ' + err.message);
-      status.textContent = '실패';
-    } finally {
-      btn.disabled = false;
+    if(stu){ ctx.globalAlpha=.8;  ctx.drawImage(stu, sc.x, sc.y, stuBox.w, stuBox.h); }
+    if(ref){ ctx.globalAlpha=.55; ctx.drawImage(ref, rc.x, rc.y, refBox.w, refBox.h); }
+    ctx.globalAlpha=1;
+
+    if(overlay){
+      const ov = new Image();
+      ov.onload = ()=> ctx.drawImage(ov, rc?rc.x:pad, rc?rc.y:pad, rc?refBox.w:W, rc?refBox.h:H);
+      ov.src = overlay;
     }
   }
-  document.getElementById('go').addEventListener('click', analyze);
+
+  // DnD
+  ['zoneRef','zoneStu'].forEach(id=>{
+    const z=el(id);
+    z.addEventListener('dragover', e=>{e.preventDefault(); z.classList.add('drop');});
+    z.addEventListener('dragleave', ()=> z.classList.remove('drop'));
+    z.addEventListener('drop', async e=>{
+      e.preventDefault(); z.classList.remove('drop');
+      const f=e.dataTransfer.files?.[0]; if(!f) return;
+      await setImage(id==='zoneRef'?'ref':'stu', await readFile(f));
+    });<!-- TEST: 123 -->
+
+  });
+
+  // File inputs
+  el('fileRef').addEventListener('change', async e=>{ const f=e.target.files?.[0]; if(!f) return; await setImage('ref', await readFile(f)); });
+  el('fileStu').addEventListener('change', async e=>{ const f=e.target.files?.[0]; if(!f) return; await setImage('stu', await readFile(f)); });
+
+  // Mode segment
+  document.getElementById('modeSeg').addEventListener('click', e=>{
+    if(e.target.tagName!=='BUTTON') return;
+    [...e.currentTarget.children].forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active'); state.mode=e.target.dataset.mode;
+  });
+
+  // Run
+  el('runBtn').addEventListener('click', async ()=>{
+    if(!state.stuData){ log("실습 이미지를 먼저 넣어주세요.", 'warn'); return; }
+    const aspects=[...document.querySelectorAll('#aspects input:checked')].map(i=>i.value);
+    const payload={ mode:state.mode, aspects, normalize:el('normalize').checked, original:state.refData, practice:state.stuData };
+
+    if(el('demoMode').checked){
+      log("데모 모드: 백엔드 호출 없이 샘플 피드백을 표시합니다.");
+      drawOverlay();
+      mockFeedback(payload); return;
+    }
+
+    try{
+      el('runBtn').disabled=true; el('runBtn').textContent="분석 중…";
+      const r=await fetch(`${API_BASE}/analyze`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data=await r.json();
+      if(data.overlay) drawOverlay(data.overlay);
+      if(data.feedback?.length) data.feedback.forEach(t=>log("• "+t)); else log("피드백 응답이 비어 있습니다.", 'warn');
+      if(data.stats) log("평가 지표: "+JSON.stringify(data.stats), 'info');
+    }catch(err){
+      log("백엔드 연결 실패 또는 오류: "+err.message, 'err');
+    }finally{
+      el('runBtn').disabled=false; el('runBtn').textContent="분석 시작";
+    }
+  });
+
+  // Demo feedback
+  function mockFeedback({mode, aspects}){
+    const common = [
+      "긴변 정규화를 사용해 두 이미지의 스케일을 맞췄습니다.",
+      "전체 균형은 안정적입니다. 세부 정합을 조금만 보완해 보세요."
+    ];
+    const lines=[];
+    if(mode==='copy'){
+      if(aspects.includes('shape')) lines.push("형태: 외곽 실루엣 유사도 높음. 좌측 팔 각도가 원본 대비 8° 낮습니다.");
+      if(aspects.includes('persp')) lines.push("투시: 발바닥선 소실점이 상향으로 2% 치우칩니다.");
+      if(aspects.includes('comp'))  lines.push("구도: 시각 중심이 12px 우측—중심선 보정 권장.");
+    }else if(mode==='style'){
+      if(aspects.includes('value')) lines.push("명암(스타일): 하이라이트 범위가 넓고 경계가 부드러움—중간톤 10~15% 확대.");
+      if(aspects.includes('color')) lines.push("색감(스타일): 원본의 차가운 그레이 대비 따뜻한 톤이 강함—B -5 / S -8 권장.");
+    }else{
+      lines.push("창작: 포즈 리듬을 키우려면 어깨–골반 역각을 5° 증가해 보세요.");
+    }
+    [...common, ...lines].forEach(t=>log("• "+t));
+  }
 </script>
 </body>
 </html>
