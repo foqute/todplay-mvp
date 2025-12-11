@@ -924,7 +924,6 @@ $x    .addEventListener('input',()=>{ ovX=(+$x.value); if(ovActive) renderOverla
 $y    .addEventListener('input',()=>{ ovY=(+$y.value); if(ovActive) renderOverlay(); });
 
 /* 라인 가이드 */
-let guidesOn=false;
 function gridSpacingPx(){ const pxPerCm = 96/2.54; return Math.max(80, Math.round(pxPerCm*4)); }
 function drawGuidesOn(cv){
   const ctx=cv.getContext('2d'); const w=cv.width/DPR, h=cv.height/DPR, step=gridSpacingPx();
