@@ -19,12 +19,13 @@ client = OpenAI()
 app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
 app.add_middleware(
-    CORSMiddleware(
-        allow_origins=["*"],     # 개발 단계 전체 허용
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    CORSMiddleware,
+    allow_origins=["*"],  # 개발 단계 전체 허용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 # ===== In-memory context store =====
 CTX: Dict[str, Dict[str, Any]] = {}

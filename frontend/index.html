@@ -5,6 +5,7 @@
 <title>TOD PLAY - MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
+  
  :root{
     --bg:#0f1216; --panel:#161a20; --panel2:#0f1216; --txt:#e8eef6; --muted:#9aa3ad; --line:#2a2f38;
     --btn:#1c2330; --btnhi:#2563eb;
@@ -16,6 +17,7 @@
 .draw-layer, #drawCursor { transform-origin: 0 0; }
 
 *{box-sizing:border-box}
+
 
 /* ===================== 전체 / 배경 ===================== */
 html,body{
@@ -87,6 +89,7 @@ button.primary{ background:var(--btnhi); border-color:transparent; color:#fff }
   padding:10px;
   height:100%;
 }
+
 
 /* ===================== 좌측 그룹 박스 ===================== */
 /* 그룹 박스: 30% 불투명 */
@@ -724,6 +727,9 @@ input[type=file]{ display:none }
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
+
+var guidesOn = false;
+
 const API = "https://todplay-beta.onrender.com";
 
 // 오버레이 전역 상태 (한 번만 선언)
