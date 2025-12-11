@@ -1,5 +1,5 @@
 # backend/main.py
-import os, base64, json
+import os, base64, json, traceback
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -19,10 +19,11 @@ client = OpenAI()
 app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],     # 개발 단계 전체 허용
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware(
+        allow_origins=["*"],     # 개발 단계 전체 허용
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 )
 
 # ===== In-memory context store =====
@@ -39,6 +40,7 @@ def to_data_url(file: UploadFile) -> str:
     return f"data:{mime};base64,{b64}"
 
 def pick_model(user_mode: str) -> str:
+    # 필요하면 모드별로 분기
     return "gpt-5"
 
 # =====================
@@ -69,6 +71,8 @@ _METRIC_LABELS = {
     "persp": "투시",
     "structure": "구도",
     "comp": "구도",
+    # 필요시 쓸 수 있는 디테일/완성도 코드
+    "detail": "디테일/완성도",
 }
 def parse_metrics(metrics: Optional[str]) -> List[str]:
     if not metrics:
@@ -95,7 +99,7 @@ def ping():
     return {"ok": True}
 
 # ==========================
-# /analyze — 피드백 분석
+# /analyze — 피드백 분석 (TOD 플레이)
 # ==========================
 @app.post("/analyze")
 async def analyze(
@@ -110,11 +114,17 @@ async def analyze(
     question: Optional[str] = Form(None),
 ):
     try:
+        print("[ANALYZE] 요청 수신", flush=True)
+        print(f"[ANALYZE] mode={mode}, learn={learn}, metrics={metrics}, context_id={context_id}", flush=True)
+
         model = pick_model(mode)
         left_url  = to_data_url(left)
         right_url = to_data_url(right)
+        print(f"[ANALYZE] left_url_len={len(left_url)}, right_url_len={len(right_url)}", flush=True)
+
         metric_codes = parse_metrics(metrics)
         metric_ko = ko_metrics_list(metric_codes)
+        print(f"[ANALYZE] metric_ko={metric_ko}", flush=True)
 
         mode_policy = (
             "FAST 모드: '형태' 또는 '형태+명암'만 간단 평가.\n"
@@ -147,6 +157,8 @@ async def analyze(
                 {"type": "input_image", "image_url": right_url},
             ]
 
+        # (여기서는 디테일 지침은 추가하지 않음 — 오늘의 미션 쪽에서 점수로 반영)
+
         if question:
             base_text += "\n\n학생 질문: " + question.strip()
         if hints:
@@ -157,6 +169,7 @@ async def analyze(
             except Exception:
                 base_text += "\n\n추가 지침:\n" + str(hints)
 
+        print(f"[ANALYZE] OpenAI 호출 시작 - model={model}", flush=True)
         resp = client.responses.create(
             model=model,
             input=[
@@ -164,9 +177,14 @@ async def analyze(
                 {"role": "user", "content": [{"type": "input_text", "text": base_text}, *content_images]},
             ],
         )
-        notes_text = resp.output_text
+        print("[ANALYZE] OpenAI 응답 수신", flush=True)
 
-        feedback_plain = "\n".join(line.replace("#", "").strip() for line in notes_text.splitlines()).strip()
+        notes_text = resp.output_text
+        print(f"[ANALYZE] 응답 텍스트 길이={len(notes_text)}", flush=True)
+
+        feedback_plain = "\n".join(
+            line.replace("#", "").strip() for line in notes_text.splitlines()
+        ).strip()
         cid = context_id or "default"
         CTX[cid] = {
             "left_image": left_url,
@@ -177,8 +195,11 @@ async def analyze(
             "last_mode": mode,
         }
 
+        print(f"[ANALYZE] 컨텍스트 저장 완료 cid={cid}", flush=True)
         return {"ok": True, "notes": notes_text, "context_id": cid}
     except Exception as e:
+        print("[ANALYZE][ERROR]", repr(e), flush=True)
+        traceback.print_exc()
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 # ==========================
@@ -217,7 +238,8 @@ async def chat(inp: ChatIn):
             f"[학습유형] {learn or '모작'}",
             f"[평가항목] {ko_metrics_list(metric_codes)}",
         ]
-        if fb: ctx_summary.append(f"[피드백]\n{fb[:600]}{'...' if len(fb)>600 else ''}")
+        if fb:
+            ctx_summary.append(f"[피드백]\n{fb[:600]}{'...' if len(fb) > 600 else ''}")
         user_blocks.append({"type": "input_text", "text": "\n".join(ctx_summary)})
         user_blocks.append({"type": "input_image", "image_url": left})
         user_blocks.append({"type": "input_image", "image_url": right})
@@ -289,7 +311,7 @@ def read_missions():
     return _read_json()
 
 # ==========================
-# 🟢 유사도 평가 (FAST)
+# 🟢 유사도 평가 (FAST) — 오늘의 드로잉 미션용
 # ==========================
 from io import BytesIO
 import re
@@ -313,7 +335,7 @@ def _to_gray_np(im: Image.Image) -> np.ndarray:
 
 
 def _phash(im: Image.Image) -> int:
-    # 간단 pHash
+    # 간단 pHash (전체 실루엣/톤)
     im_small = im.resize((32, 32), Image.LANCZOS).convert("L")
     a = np.array(im_small, dtype=np.float32)
     dct = cv2.dct(a)
@@ -331,6 +353,7 @@ def _hamming(a: int, b: int) -> int:
 
 
 def _orb_match_score(imgA_g: np.ndarray, imgB_g: np.ndarray) -> int:
+    # 엣지/디테일 위주의 특징 매칭
     orb = cv2.ORB_create()
     kp1, des1 = orb.detectAndCompute(imgA_g, None)
     kp2, des2 = orb.detectAndCompute(imgB_g, None)
@@ -363,11 +386,19 @@ def similarity_compare(inp: SimilarityIn):
         A2 = A.resize((W, H), Image.LANCZOS)
         B2 = B.resize((W, H), Image.LANCZOS)
 
-        # 3) SSIM / pHash / ORB 피쳐
+        # 3) 그레이스케일
         gA = _to_gray_np(A2)
         gB = _to_gray_np(B2)
+
+        #    3-1) 기본 SSIM (형태/톤 중심)
         ssim_val = float(ssim(gA, gB, data_range=255))
 
+        #    3-2) 엣지 SSIM (윤곽선/디테일 중심)
+        edgesA = cv2.Canny(gA, 50, 150)
+        edgesB = cv2.Canny(gB, 50, 150)
+        edge_ssim = float(ssim(edgesA, edgesB, data_range=255))
+
+        #    3-3) pHash / ORB
         ph_a = _phash(A2)
         ph_b = _phash(B2)
         ph_dist = _hamming(ph_a, ph_b)
@@ -375,17 +406,15 @@ def similarity_compare(inp: SimilarityIn):
         orb_score = _orb_match_score(gA, gB)
 
         # 4) 0~100 점수 계산
-        #    - SSIM: 0~1 -> 0~85점
-        #    - pHash: 거리 0~64를 1~0로 매핑 -> 0~10점
-        #    - ORB: 매치 품질을 0~1로 정규화 -> 0~5점
+        #    형태(SSIM) + 디테일(edge SSIM + ORB) 비중을 높게 설정
         sim_raw = (
-            ssim_val * 85.0
-            + max(0.0, 1.0 - ph_dist / 64.0) * 10.0
-            + min(1.0, orb_score / 200.0) * 5.0
+            ssim_val * 60.0                          # 전체 형태/톤
+            + edge_ssim * 25.0                       # 윤곽선·디테일 유사도
+            + max(0.0, 1.0 - ph_dist / 64.0) * 8.0   # 전체 실루엣
+            + min(1.0, orb_score / 200.0) * 7.0      # 세부 특징 매칭
         )
 
-        # 5) 0~1 사이로 정규화 후, 약간의 감마 보정으로
-        #    높은 유사도(0.9 이상)를 95~100 근처로 끌어올림
+        # 5) 0~1 사이로 정규화 후 감마 보정
         sim01 = max(0.0, min(1.0, sim_raw / 100.0))
         sim_boosted = sim01 ** 0.7  # 0.8→0.86, 0.9→0.93, 1.0→1.0
         sim_pct = int(round(sim_boosted * 100))
@@ -393,6 +422,7 @@ def similarity_compare(inp: SimilarityIn):
         return {
             "ok": True,
             "ssim": round(ssim_val, 4),
+            "edge_ssim": round(edge_ssim, 4),
             "phash_distance": ph_dist,
             "orb_score": orb_score,
             "similarity_pct": sim_pct,
