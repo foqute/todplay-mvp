@@ -751,8 +751,6 @@ let leftName='', rightName='';
 let lastFeedbackText=''; let lastChatAnswer=''; let readyFB=false; let readyChat=false;
 let contextId=Math.random().toString(36).slice(2); window.__tod_ctx__ = { context_id: contextId };
 
-let ovActive = false;  // 오버레이 활성 여부 (초기값: 꺼짐)
-
 /* 토스트 */
 let toastTimer=null;
 function toast(msg){ if(!toastEl) return; toastEl.textContent=String(msg); toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600); }
