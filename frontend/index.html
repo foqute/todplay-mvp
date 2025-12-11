@@ -726,6 +726,16 @@ input[type=file]{ display:none }
 <script>
 const API = "https://todplay-beta.onrender.com";
 
+// 오버레이 전역 상태 (한 번만 선언)
+var ovActive  = false,
+    ovLayer   = null,
+    ovIsLine  = true,
+    ovAlpha   = 0.9,
+    ovScale   = 1,
+    ovX       = 0,
+    ovY       = 0,
+    ovTopPct  = 0.12;
+
 /* 배너 */
 (function(){ const slides=[...document.querySelectorAll('.bannerSlide')]; let i=0; setInterval(()=>{ slides.forEach(s=>s.classList.remove('show')); slides[i].classList.add('show'); i=(i+1)%slides.length; }, 3800); })();
 
@@ -868,7 +878,7 @@ function makePhotoOverlay(img,W,H){
   const cr=W/H, ir=img.width/img.height; let w,h,x,y; if(ir>cr){ w=W; h=w/ir; x=0; y=(H-h)/2; } else { h=H; w=h*ir; x=(W-w)/2; y=0; }
   ctx.filter='contrast(108%) saturate(105%)'; ctx.drawImage(img,x,y,w,h); ctx.filter='none'; return oc;
 }
-let ovActive=false, ovLayer=null, ovIsLine=true, ovAlpha=0.9, ovScale=1, ovX=0, ovY=0, ovTopPct=0.12;
+
 function buildOverlay(){
   const W = Math.round(rightCv.width / DPR), H = Math.round(rightCv.height / DPR);
   ovIsLine = leftImg ? isLineArt(leftImg) : false;
@@ -1887,38 +1897,59 @@ function bakeToBase(){
     return { x:Math.max(0,Math.min(W-minW-1,x)), y:Math.max(0,Math.min(H-minH-1,y)), W };
   }
 
-  function openEditor(p, preset){
-    if(!ta){
-      ta=document.createElement('textarea');
-      ta.setAttribute('wrap','off');
-      Object.assign(ta.style,{
-        position:'absolute', left:'0', top:'0', padding:'4px 6px',
-        background:'rgba(255,255,255,.85)', color: color,
-        border:'1px dashed #2e7dff', outline:'none', resize:'none',
-        whiteSpace:'pre-wrap', wordBreak:'normal', overflowWrap:'break-word',
-        overflow:'hidden',
-        zIndex:'1000', minWidth:'24px', minHeight:'1.2em'
-      });
-      pane.appendChild(ta);
-      ['keydown','keyup'].forEach(t=> ta.addEventListener(t, ev=>{
-        if(t==='keydown'){
-          if((ev.ctrlKey||ev.metaKey)&& ev.key.toLowerCase()==='b'){ ev.preventDefault(); bold=!bold; applyStyle(); autoFit(); return; }
-          if(ev.key==='Enter'&&!ev.shiftKey){ ev.preventDefault(); commit(); return; }
-          if(ev.key==='Escape'){ ev.preventDefault(); cancel(); return; }
+function openEditor(p, preset){
+  if(!ta){
+    ta=document.createElement('textarea');
+    ta.setAttribute('wrap','off');
+    Object.assign(ta.style,{
+      position:'absolute', left:'0', top:'0', padding:'4px 6px',
+      background:'rgba(255,255,255,.85)', color: color,
+      border:'1px dashed #2e7dff', outline:'none', resize:'none',
+      whiteSpace:'pre-wrap', wordBreak:'normal', overflowWrap:'break-word',
+      overflow:'hidden',
+      zIndex:'1000', minWidth:'24px', minHeight:'1.2em'
+    });
+    pane.appendChild(ta);
+
+    ['keydown','keyup'].forEach(t=> ta.addEventListener(t, ev=>{
+      if(t==='keydown'){
+        if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='b'){
+          ev.preventDefault();
+          bold=!bold;
+          applyStyle();
+          autoFit();
+          return;
         }
-        ev.stopPropagation();
-      }));
-      ta.addEventListener('dragstart', e=> e.preventDefault());
-      ta.addEventListener('input', autoFit);
-      ta.addEventListener('mousedown', (e)=>{
-        if(e.shiftKey||e.altKey||e.ctrlKey||e.metaKey) return;
-        e.stopPropagation();
-        dragging=true; dOff={ x:(e.offsetX), y:(e.offsetY) }; dragCache=ta.value;
-      });
-    }
-   if (preset && ('text' in preset)) {
-  textEdit.el.value = String(preset.text ?? '');
-}
+        if(ev.key==='Enter' && !ev.shiftKey){
+          ev.preventDefault();
+          commit();
+          return;
+        }
+        if(ev.key==='Escape'){
+          ev.preventDefault();
+          cancel();
+          return;
+        }
+      }
+      ev.stopPropagation();
+    }));
+
+    ta.addEventListener('dragstart', e=> e.preventDefault());
+    ta.addEventListener('input', autoFit);
+
+    ta.addEventListener('mousedown', (e)=>{
+      if(e.shiftKey||e.altKey||e.ctrlKey||e.metaKey) return;
+      e.stopPropagation();
+      dragging=true;
+      dOff={ x:(e.offsetX), y:(e.offsetY) };
+      dragCache=ta.value;
+    });
+  }
+
+  // 🔴 여기서 오른쪽 엔진의 textEdit가 아니라, 보조 텍스트박스 ta를 사용해야 합니다.
+  if (preset && ('text' in preset)) {
+    ta.value = String(preset.text ?? '');
+  }
 
     tx=p.x; ty=p.y; applyStyle(); place(); autoFit();
     try{ ta.focus({preventScroll:true}); }catch{ ta.focus(); }
