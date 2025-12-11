@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>오늘의 드로잉 미션 – 관리자 (2장/5분)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{--bg:#0f1216;--panel:#161a20;--txt:#e8eef6;--muted:#9aa3ad;--line:#2f3b4b}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#0f1216;color:var(--txt);
+    font:14px/1.5 system-ui,-apple-system,Segoe UI,Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+  h1{margin:0 0 16px;font-size:22px}
+  .card{background:#12161c;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .row{display:flex;gap:10px;align-items:center;margin:10px 0}
+  label{min-width:92px;color:#cbd5e1}
+  input[type="text"],input[type="date"]{height:36px;background:#0f141b;border:1px solid var(--line);
+    border-radius:8px;color:var(--txt);padding:0 10px;flex:1}
+  input[type="file"]{color:#cbd5e1}
+  .thumbs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  .ph{border:1px dashed #3a4658;border-radius:10px;height:200px;display:flex;align-items:center;
+    justify-content:center;overflow:hidden;background:#0c1117}
+  .ph img{max-width:100%;max-height:100%;display:block}
+  .btn{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:#1a2230;color:#d9e4f0;cursor:pointer}
+  .btn.primary{background:#223047;color:#f5fbff}
+  .btn.warn{background:#372225;color:#ffd5d5;border-color:#5b2b2b}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  textarea{width:100%;min-height:220px;background:#0f141b;border:1px solid var(--line);
+    border-radius:10px;color:#d9e4f0;padding:10px;white-space:pre}
+  .muted{color:#9aa3ad}
+  .ok{color:#85f389}
+  .err{color:#ff8c8c}
+  .hint{font-size:12px;color:#9aa3ad;margin-left:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>오늘의 드로잉 미션 – 관리자 (2장/5분)</h1>
+
+  <div class="card">
+    <div class="row">
+      <label for="date">날짜</label>
+      <input id="date" type="date" />
+      <label for="title" style="min-width:110px">제목(옵션)</label>
+      <input id="title" type="text" placeholder="예: 드251116" />
+    </div>
+
+    <div class="row"><label>이미지 1</label><input id="f1" type="file" accept="image/*" /></div>
+    <div class="row"><label>이미지 2</label><input id="f2" type="file" accept="image/*" /></div>
+    <div class="thumbs">
+      <div class="ph"><img id="p1" alt=""></div>
+      <div class="ph"><img id="p2" alt=""></div>
+    </div>
+    <div class="row">
+      <span class="muted">※ 게임은 날짜별 <b>앞 2장</b>을 사용합니다.</span>
+      <span class="hint">기존 3장 날짜는 그대로 둬도 됩니다(앞 2장만 사용).</span>
+    </div>
+
+    <div class="row" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn" id="btnOpen">서버 JSON 열기</button>
+      <button class="btn warn" id="btnOverwrite">오늘 항목 덮어쓰기 확인</button>
+      <button class="btn primary" id="btnSave">미션 저장(서버로 업로드)</button>
+    </div>
+    <div id="status" class="muted" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="muted">서버 응답/미리보기</div>
+      <div>
+        <button class="btn" id="btnToday">오늘 항목 확인</button>
+        <button class="btn" id="btnExport">JSON 내보내기</button>
+        <label class="btn" for="imp" style="cursor:pointer">JSON 가져오기</label>
+        <input id="imp" type="file" accept="application/json" style="display:none" />
+      </div>
+    </div>
+    <textarea id="out" spellcheck="false" readonly></textarea>
+  </div>
+</div>
+
+<script>
+(() => {
+  /*** 1) 엔드포인트 ***/
+  const API     = "http://127.0.0.1:8000";
+  const EP_SAVE = API + "/api/missions/daily_missions";   // 저장 API
+  const EP_JSON = API + "/missions/daily_missions.json";  // 정적 JSON
+
+  /*** 2) 엘리먼트 ***/
+  const $ = (s)=>document.querySelector(s);
+  const date  = $("#date"), title = $("#title");
+  const f1 = $("#f1"), f2 = $("#f2");
+  const p1 = $("#p1"), p2 = $("#p2");
+  const out = $("#out"), status = $("#status");
+
+  // 기본 날짜: 오늘(YYYY-MM-DD)
+  date.valueAsDate = new Date();
+
+  // 미리보기
+  [[f1,p1],[f2,p2]].forEach(([inp,img])=>{
+    inp.addEventListener("change",()=>{
+      const f = inp.files?.[0];
+      img.src = f ? URL.createObjectURL(f) : "";
+    });
+  });
+
+  /*** 3) 유틸 ***/
+  function setOK(msg){ status.innerHTML = `<span class="ok">${msg}</span>`; }
+  function setERR(msg){ status.innerHTML = `<span class="err">${msg}</span>`; }
+
+  function fileToDataURL(file){
+    return new Promise((res,rej)=>{
+      if(!file) return res(null);
+      const r=new FileReader();
+      r.onload = ()=>res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function gatherImages(){
+    // 비어 있지 않은 파일만 수집 (최대 2장)
+    const arr=[];
+    for (const el of [f1,f2]) {
+      const f=el.files?.[0];
+      if (f) arr.push(await fileToDataURL(f));
+    }
+    return arr;
+  }
+
+  async function getAllMissions(){
+    const r = await fetch(EP_JSON + "?ts=" + Date.now(), { cache:"no-store" });
+    if(!r.ok) throw new Error(`GET 실패: ${r.status}`);
+    return await r.json();
+  }
+
+  /*** 4) 저장: POST → 405면 PUT 폴백 ***/
+  async function saveMission(dateKey, titleText, images){
+    const payload = { date: dateKey, title: (titleText||"").trim(), images };
+
+    // POST
+    let r = await fetch(EP_SAVE, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // 405(Method Not Allowed) → PUT로 폴백
+    if(r.status === 405){
+      r = await fetch(EP_SAVE, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const js = await r.json().catch(()=> ({}));
+    if(!r.ok || js.ok !== true){
+      throw new Error(`${r.status} ${js?.detail||js?.error||"Save failed"}`);
+    }
+    return js; // { ok:true, saved:"YYYY-MM-DD" }
+  }
+
+  /*** 5) 버튼 바인딩 ***/
+  function wire(){
+    // 저장
+    $("#btnSave").addEventListener("click", async ()=>{
+      try{
+        setOK("서버로 업로드 중…");
+        const dateKey = date.value;
+        if(!dateKey){ setERR("날짜를 선택하세요."); return; }
+
+        const images = await gatherImages();
+        if(images.length < 2){
+          setERR("이미지 2장을 모두 업로드하세요.");
+          return;
+        }
+
+        const js = await saveMission(dateKey, title.value, images);
+        out.value = JSON.stringify(js, null, 2);
+        setOK(`저장 완료 → ${dateKey}`);
+      }catch(e){
+        console.error(e);
+        setERR(`저장 실패: ${e.message||e}`);
+        out.value = JSON.stringify({ error: String(e.message||e) }, null, 2);
+      }
+    });
+
+    // 서버 JSON 열기(정적)
+    $("#btnOpen").addEventListener("click", async ()=>{
+      try{
+        const all = await getAllMissions();
+        out.value = JSON.stringify(all, null, 2);
+        setOK("서버 JSON 로드 완료");
+      }catch(e){
+        setERR(`로드 실패: ${e.message||e}`);
+        out.value = JSON.stringify({ error: String(e.message||e) }, null, 2);
+      }
+    });
+
+    // 오늘 항목만 보기
+    $("#btnToday").addEventListener("click", async ()=>{
+      try{
+        const all = await getAllMissions();
+        const key = date.value;
+        out.value = JSON.stringify(all?.[key] ? { [key]: all[key] } : { info:"해당 날짜 항목 없음" }, null, 2);
+        setOK("오늘 항목 확인");
+      }catch(e){
+        setERR(`표시 실패: ${e.message||e}`);
+        out.value = JSON.stringify({ error: String(e.message||e) }, null, 2);
+      }
+    });
+
+    // 덮어쓰기 안내(안전장치)
+    $("#btnOverwrite").addEventListener("click", async ()=>{
+      try{
+        const all = await getAllMissions();
+        const key = date.value;
+        if (all?.[key]) {
+          setERR(`주의: ${key} 항목이 존재합니다. 저장하면 덮어씁니다.`);
+          out.value = JSON.stringify({ [key]: all[key] }, null, 2);
+        } else {
+          setOK("해당 날짜 항목이 없습니다. 새로 생성됩니다.");
+        }
+      }catch(e){
+        setERR(`확인 실패: ${e.message||e}`);
+      }
+    });
+
+    // JSON 내보내기/가져오기(로컬 편집용)
+    $("#btnExport").addEventListener("click", async ()=>{
+      try{
+        const all = await getAllMissions();
+        const blob = new Blob([JSON.stringify(all,null,2)], {type:"application/json"});
+        const a=document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "daily_missions.json";
+        a.click();
+      }catch(e){ setERR(`내보내기 실패: ${e.message||e}`); }
+    });
+    $("#imp").addEventListener("change", async (e)=>{
+      try{
+        const f=e.target.files?.[0]; if(!f) return;
+        const txt = await f.text();
+        out.value = txt;
+        setOK("가져오기 미리보기 완료 (업로드는 별도 서버 절차 필요)");
+      }catch(e){ setERR(`가져오기 실패: ${e.message||e}`); }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", wire);
+})();
+</script>
+</body>
+</html>

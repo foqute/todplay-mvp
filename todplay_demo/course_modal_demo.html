@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>TOD PLAY – 아트 탐색 모달 데모</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161a20; --text:#e8eef6; --muted:#9aa3ad; --line:#2a2f38;
+    --accent:#4f8cff; --accent2:#22c55e; --danger:#ef4444; --coin:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Pretendard,"Malgun Gothic",sans-serif}
+  h1,h2,h3{margin:.2rem 0 .6rem}
+  .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+  /* 썸네일 그리드 */
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  @media (max-width:1024px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s}
+  .card:hover{transform:translateY(-2px)}
+  .thumb{aspect-ratio:16/10;background:#0c0f14 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width=300 height=190><rect width=100% height=100% fill=%230c0f14/><text x=50% y=52% fill=%234f8cff font-family=sans-serif font-size=18 text-anchor=middle>thumbnail</text></svg>') center/cover no-repeat}
+  .card .body{padding:10px}
+  .title{font-weight:700}
+  .meta{color:var(--muted);font-size:12px;margin-top:4px}
+
+  /* 모달 */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:1000}
+  .modal-backdrop.show{display:flex}
+  .modal{width:min(1020px,100%);max-height:90vh;background:#0f141a;border:1px solid var(--line);border-radius:14px;display:grid;grid-template-columns:1fr 320px;gap:0}
+  @media (max-width:900px){.modal{grid-template-columns:1fr}}
+  .md-left{padding:18px 18px 8px;overflow:auto}
+  .md-right{border-left:1px solid var(--line);padding:16px;position:relative;background:#0f1216}
+  @media (max-width:900px){.md-right{border-left:none;border-top:1px solid var(--line)}}
+  .md-head{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+  .md-cover{width:84px;height:84px;border-radius:10px;background:#0c0f14}
+  .md-title{font-size:18px;margin:0}
+  .md-author{color:var(--muted);font-size:12px}
+  .close{position:absolute;right:10px;top:10px;border:1px solid var(--line);background:#141922;color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#101826;border:1px solid var(--line);padding:4px 8px;border-radius:999px;color:var(--muted);font-size:12px}
+  .tabs{display:flex;gap:8px;margin:8px 0 12px}
+  .tab{border:1px solid var(--line);background:#141922;color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer}
+  .tab.active{background:var(--accent);border-color:transparent}
+  .section{display:none}
+  .section.show{display:block}
+  .section h3{margin:8px 0 6px}
+  .list{display:grid;grid-template-columns:1fr;gap:8px}
+  .list .item{border:1px dashed var(--line);border-radius:8px;padding:8px}
+  .price{font-size:22px;font-weight:800}
+  .coin{color:var(--coin)}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#1a2230;color:#fff;padding:10px 12px;border-radius:10px;cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:transparent}
+  .btn.success{background:var(--accent2);border-color:transparent}
+  .hr{height:1px;background:var(--line);margin:12px 0}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{background:#101826;border:1px solid var(--line);color:var(--muted);padding:4px 8px;border-radius:999px;font-size:12px}
+  .right-sticky{position:sticky;top:12px}
+  .kicker{color:#9fc1ff;font-weight:700;letter-spacing:.2em;font-size:12px}
+  a.deep{color:#9fc1ff;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="kicker">ART EXPLORE</h1>
+    <h2 style="margin:0 0 14px">아트 탐색</h2>
+    <div id="grid" class="grid" aria-label="과목 목록"></div>
+  </div>
+
+  <!-- 모달 -->
+  <div id="backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <div class="modal" role="document">
+      <div class="md-left">
+        <button class="close" id="btnClose" aria-label="닫기">⨉</button>
+        <div class="md-head">
+          <div id="mdCover" class="md-cover" aria-hidden="true"></div>
+          <div>
+            <h2 id="mdTitle" class="md-title">제목</h2>
+            <div id="mdAuthor" class="md-author">아티스트 • 예상 학습시간</div>
+            <div class="row" style="margin-top:6px">
+              <span id="mdTags" class="badge">#tag</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button id="tab-ov" class="tab active" role="tab" aria-controls="sec-ov">소개</button>
+          <button id="tab-cu" class="tab" role="tab" aria-controls="sec-cu">커리큘럼</button>
+          <button id="tab-rv" class="tab" role="tab" aria-controls="sec-rv">후기</button>
+          <button id="tab-fq" class="tab" role="tab" aria-controls="sec-fq">FAQ</button>
+        </div>
+
+        <section id="sec-ov" class="section show">
+          <h3>과목 소개</h3>
+          <p id="mdDesc">설명 텍스트</p>
+          <div class="hr"></div>
+          <div class="row">
+            <span class="pill">초급 친화</span>
+            <span class="pill">피드백 지원</span>
+            <span class="pill">모바일 OK</span>
+          </div>
+        </section>
+
+        <section id="sec-cu" class="section">
+          <h3>커리큘럼(맛보기)</h3>
+          <div id="mdCurr" class="list"></div>
+        </section>
+
+        <section id="sec-rv" class="section">
+          <h3>수강 후기</h3>
+          <div id="mdReviews" class="list"></div>
+        </section>
+
+        <section id="sec-fq" class="section">
+          <h3>자주 묻는 질문</h3>
+          <div id="mdFAQ" class="list"></div>
+        </section>
+      </div>
+
+      <aside class="md-right">
+        <div class="right-sticky">
+          <div class="price"><span id="mdPrice" class="coin">150</span> 코인</div>
+          <p style="color:var(--muted);margin:6px 0 12px">결제 후 즉시 시작 · 평생 수강</p>
+          <div class="row">
+            <button id="btnBuy" class="btn primary">코인 결제</button>
+            <button id="btnStart" class="btn success">맛보기 시작</button>
+          </div>
+          <div class="hr"></div>
+          <p style="font-size:12px;color:var(--muted)">링크 공유: <a id="shareLink" class="deep" href="#">열기 URL</a></p>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+/* ---------------------------
+   1) 데모 데이터
+--------------------------- */
+const COURSES = [
+  {
+    id:"figure-basics",
+    title:"인체도형화 마스터",
+    author:"피카소",
+    cover:"#223344",
+    minutes:180,
+    price:180,
+    tags:["인체","도형화","초급~중급"],
+    desc:"기초 도형으로 인체를 쉽게 잡는 법을 단계별로 연습합니다. 초보자도 바로 따라 할 수 있도록 쉬운 말로 설명해요.",
+    curriculum:[
+      "도형으로 머리·몸통 나누기",
+      "팔·다리 비율 익히기",
+      "기본 포즈 그리기 (정면/측면)",
+      "손·발 간단하게 표현하기",
+      "전체 체크 & 피드백 포인트"
+    ],
+    reviews:[
+      "정말 ‘쉽게’ 설명해줘서 막혔던 부분이 뚫렸어요! (민지)",
+      "비율 잡는 법만 익혀도 그림이 달라집니다. (현우)"
+    ],
+    faqs:[
+      "완전 초보도 가능한가요? → 네, 도형부터 시작합니다.",
+      "준비물은요? → 연필/지우개 또는 디지털 펜이면 충분해요."
+    ]
+  },
+  {
+    id:"casual-portrait",
+    title:"캐주얼체 초상 드로잉",
+    author:"모네",
+    cover:"#2c1f2f",
+    minutes:150,
+    price:150,
+    tags:["얼굴","캐주얼체","명암"],
+    desc:"사진 같은 완성도 대신, ‘보기 좋은’ 캐주얼체 얼굴을 그리는 연습입니다. 눈·코·입의 단순화 팁을 배워요.",
+    curriculum:["얼굴 비율 빠르게 잡기","눈/코/입 쉬운 단순화","헤어 & 하이라이트","표정 바꾸기 실습"],
+    reviews:["인스타 감성 초상화 금방 그리게 됨… (윤아)"],
+    faqs:["아이패드로 가능? → 가능해요. 레이어 가이드도 제공."]
+  },
+  {
+    id:"perspective-101",
+    title:"투시 기초로 배경 그리기",
+    author:"고흐",
+    cover:"#203226",
+    minutes:120,
+    price:160,
+    tags:["배경","투시","1/2점"],
+    desc:"1점/2점 투시만 이해해도 간단한 거리 풍경을 그릴 수 있어요. 도로/건물 블럭부터 천천히 진행합니다.",
+    curriculum:["1점 투시 이해","2점 투시 이해","거리 풍경 블록 스케치","간단 채색 팁"],
+    reviews:["투시가 ‘처음으로’ 이해됨… (재민)"],
+    faqs:["수학 약한데 괜찮나요? → 네, 눈으로 익히는 방식입니다."]
+  },
+  {
+    id:"hands-quick",
+    title:"손 그리기 퀵레슨",
+    author:"르누아르",
+    cover:"#362a1f",
+    minutes:90,
+    price:120,
+    tags:["손","구조","빠른연습"],
+    desc:"손의 구조를 아주 간단한 덩어리로 나눠 빠르게 연습합니다. 10가지 포즈 맛보기 포함.",
+    curriculum:["손바닥/손등 구조","손가락 각도와 관절","흔한 포즈 10선"],
+    reviews:["사진만 보던 제가 구조를 이해했어요! (세린)"],
+    faqs:["왼손잡이도 따라 할 수 있나요? → 물론입니다."]
+  }
+];
+
+/* ---------------------------
+   2) 썸네일 렌더
+--------------------------- */
+const grid = document.getElementById('grid');
+grid.innerHTML = COURSES.map(c=>`
+  <article class="card" data-id="${c.id}" tabindex="0" aria-label="${c.title}">
+    <div class="thumb" style="background:${c.cover}"></div>
+    <div class="body">
+      <div class="title">${c.title}</div>
+      <div class="meta">${c.author} • 약 ${Math.round(c.minutes/60)}시간</div>
+    </div>
+  </article>
+`).join('');
+grid.addEventListener('click', e=>{
+  const card = e.target.closest('.card');
+  if(card) openCourse(card.dataset.id);
+});
+grid.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ const card=e.target.closest('.card'); if(card) openCourse(card.dataset.id); }
+});
+
+/* ---------------------------
+   3) 모달 동작 + 해시 라우팅
+--------------------------- */
+const backdrop = document.getElementById('backdrop');
+const btnClose = document.getElementById('btnClose');
+
+function fillModal(course){
+  // 헤더
+  document.getElementById('mdTitle').textContent = course.title;
+  document.getElementById('mdAuthor').textContent = `${course.author} • 약 ${Math.round(course.minutes/60)}시간`;
+  document.getElementById('mdCover').style.background = course.cover;
+  document.getElementById('mdDesc').textContent = course.desc;
+  document.getElementById('mdPrice').textContent = course.price;
+
+  // 태그
+  const tagHTML = course.tags.map(t=>`<span class="badge"># ${t}</span>`).join(' ');
+  document.getElementById('mdTags').outerHTML = `<div class="row">${tagHTML}</div>`;
+
+  // 커리큘럼/리뷰/FAQ
+  document.getElementById('mdCurr').innerHTML = course.curriculum.map(i=>`<div class="item">${i}</div>`).join('');
+  document.getElementById('mdReviews').innerHTML = (course.reviews||[]).map(i=>`<div class="item">“${i}”</div>`).join('') || `<div class="item">아직 후기가 없어요.</div>`;
+  document.getElementById('mdFAQ').innerHTML = (course.faqs||[]).map(i=>`<div class="item">${i}</div>`).join('');
+
+  // 공유 링크 (해시)
+  const url = `${location.origin}${location.pathname}#course=${course.id}`;
+  const a = document.getElementById('shareLink');
+  a.href = url; a.textContent = url;
+}
+
+function openCourse(id){
+  const course = COURSES.find(c=>c.id===id);
+  if(!course) return;
+  fillModal(course);
+  // 탭 초기화
+  activateTab('ov');
+  // 해시 갱신
+  history.pushState(null,'',`#course=${id}`);
+  backdrop.classList.add('show');
+  // 포커스 이동
+  setTimeout(()=>btnClose.focus(), 10);
+}
+function closeModal(){
+  backdrop.classList.remove('show');
+  if(location.hash.startsWith('#course=')){
+    history.pushState(null,'', location.pathname);
+  }
+}
+btnClose.addEventListener('click', closeModal);
+backdrop.addEventListener('click', e=>{ if(e.target===backdrop) closeModal(); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && backdrop.classList.contains('show')) closeModal(); });
+
+// 초기 해시 열기
+function openFromHash(){
+  const m = location.hash.match(/#course=([a-z0-9\-_.]+)/i);
+  if(m){ openCourse(m[1]); }
+}
+window.addEventListener('load', openFromHash);
+
+/* ---------------------------
+   4) 탭 전환
+--------------------------- */
+function activateTab(key){
+  ['ov','cu','rv','fq'].forEach(k=>{
+    document.getElementById('tab-'+k).classList.toggle('active', k===key);
+    document.getElementById('sec-'+k).classList.toggle('show',   k===key);
+  });
+}
+['ov','cu','rv','fq'].forEach(k=>{
+  document.getElementById('tab-'+k).addEventListener('click', ()=>activateTab(k));
+});
+
+/* ---------------------------
+   5) 결제/맛보기 버튼 (데모)
+--------------------------- */
+document.getElementById('btnBuy').addEventListener('click',()=>{
+  alert('결제 모달/PG 연결 자리입니다. (코인 결제/충전 패널로 연결)');
+});
+document.getElementById('btnStart').addEventListener('click',()=>{
+  alert('맛보기 5개 이미지로 수업을 시작합니다. (원작 칸 로딩 → 순차 진행)');
+});
+</script>
+</body>
+</html>
