@@ -81,9 +81,10 @@
 <script>
 (() => {
   /*** 1) 엔드포인트 ***/
-  const API     = "http://127.0.0.1:8000";
-  const EP_SAVE = API + "/api/missions/daily_missions";   // 저장 API
-  const EP_JSON = API + "/missions/daily_missions.json";  // 정적 JSON
+  const API = "https://todplay-beta.onrender.com";
+  const EP_SAVE = API + "/api/missions/daily_missions";
+  const EP_JSON = API + "/missions/daily_missions.json";
+
 
   /*** 2) 엘리먼트 ***/
   const $ = (s)=>document.querySelector(s);
