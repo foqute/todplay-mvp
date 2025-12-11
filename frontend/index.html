@@ -724,7 +724,7 @@ input[type=file]{ display:none }
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-const API = "http://127.0.0.1:8000";
+const API = "https://todplay-beta.onrender.com";
 
 /* 배너 */
 (function(){ const slides=[...document.querySelectorAll('.bannerSlide')]; let i=0; setInterval(()=>{ slides.forEach(s=>s.classList.remove('show')); slides[i].classList.add('show'); i=(i+1)%slides.length; }, 3800); })();
