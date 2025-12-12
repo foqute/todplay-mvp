@@ -1,18 +1,21 @@
 # backend/main.py
 import os, base64, json, traceback
 from pathlib import Path
-from fastapi.responses import FileResponse
 from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, UploadFile, File, Form, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from fastapi.responses import FileResponse
-
+# ======================
+# 경로 (먼저!)
+# ======================
+BASE_DIR = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = BASE_DIR / "frontend"
 
 # ======================
 # 초기 로드 & 클라이언트
@@ -24,15 +27,20 @@ app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 개발 단계 전체 허용
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-BASE_DIR = Path(__file__).resolve().parents[1]  # 프로젝트 루트(todplay-mvp)
-FRONTEND_DIR = BASE_DIR / "frontend"
+# ======================
+# 정적파일 (app 만든 뒤!)
+# ======================
+app.mount("/img", StaticFiles(directory=FRONTEND_DIR / "img"), name="img")
 
+# ======================
+# 라우트
+# ======================
 @app.get("/index2.html")
 def hero_page():
     return FileResponse(FRONTEND_DIR / "index2.html", media_type="text/html")
@@ -40,7 +48,6 @@ def hero_page():
 # ===== In-memory context store =====
 CTX: Dict[str, Dict[str, Any]] = {}
 
-# =====================
 # 기본 유틸 함수
 # =====================
 def to_data_url(file: UploadFile) -> str:
