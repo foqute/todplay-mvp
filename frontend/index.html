@@ -2035,24 +2035,24 @@ function openEditor(p, preset){
     if((e.ctrlKey||e.metaKey)&& e.key.toLowerCase()==='b'){ e.preventDefault(); bold=!bold; boldBtn.classList.toggle('on', bold); if(ta){ applyStyle(); autoFit(); } }
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
-
   /* === 오늘의 드로잉 미션 → TOD HERO 이동 === */
-  const missionBtn = document.getElementById('btnMission');
-  if (missionBtn) {
-    missionBtn.addEventListener('click', () => {
-      window.location.href = '/index2.html';
-    });
-  }
+const missionBtn = document.getElementById('btnMission');
+if (missionBtn) {
+  missionBtn.addEventListener('click', () => {
+    window.location.href = '/index2.html';
+  });
+}
 
-  /* === 좌측 로고의 TOD HERO 클릭 → TOD HERO 이동 === */
-  const heroLogo = document.getElementById('logoHero');
-  if (heroLogo) {
-    heroLogo.style.cursor = 'pointer';   // 클릭 느낌
-    heroLogo.addEventListener('click', () => {
-      window.location.href = '/index2.html';
-    });
-  }
+/* === 좌측 로고의 TOD HERO 클릭 → TOD HERO 이동 === */
+// HTML에 id="logoHero"가 없으므로 class로 잡는 게 맞습니다.
+const heroLogo = document.querySelector('.logo-sub');
+if (heroLogo) {
+  heroLogo.style.cursor = 'pointer';
+  heroLogo.addEventListener('click', () => {
+    window.location.href = '/index2.html';
+  });
+}
+
 
   resize();
 })();
