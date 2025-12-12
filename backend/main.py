@@ -1,6 +1,7 @@
 # backend/main.py
 import os, base64, json, traceback
 from pathlib import Path
+from fastapi.responses import FileResponse
 from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, UploadFile, File, Form, Body, HTTPException
@@ -9,6 +10,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from fastapi.responses import FileResponse
+
 
 # ======================
 # 초기 로드 & 클라이언트
@@ -26,6 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = Path(__file__).resolve().parents[1]  # 프로젝트 루트(todplay-mvp)
+FRONTEND_DIR = BASE_DIR / "frontend"
+
+@app.get("/index2.html")
+def hero_page():
+    return FileResponse(FRONTEND_DIR / "index2.html", media_type="text/html")
 
 # ===== In-memory context store =====
 CTX: Dict[str, Dict[str, Any]] = {}
