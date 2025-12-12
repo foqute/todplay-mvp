@@ -506,7 +506,7 @@ input[type=file]{ display:none }
     <div class="brand">
       <div class="logoBox">
         <div class="logo-btn logo-main">TOD&nbsp;PLAY</div>
-        <div class="logo-btn logo-sub">TOD&nbsp;HERO</div>
+        <div class="logo-btn logo-sub" id="logoHero">TOD&nbsp;HERO</div>
       </div>
     </div>
 
@@ -2034,6 +2034,25 @@ function openEditor(p, preset){
     if((e.ctrlKey||e.metaKey)&& e.shiftKey&&e.key.toLowerCase()==='z'){ e.preventDefault(); redo(); }
     if((e.ctrlKey||e.metaKey)&& e.key.toLowerCase()==='b'){ e.preventDefault(); bold=!bold; boldBtn.classList.toggle('on', bold); if(ta){ applyStyle(); autoFit(); } }
   });
+
+  document.addEventListener('DOMContentLoaded', () => {
+
+  /* === 오늘의 드로잉 미션 → TOD HERO 이동 === */
+  const missionBtn = document.getElementById('btnMission');
+  if (missionBtn) {
+    missionBtn.addEventListener('click', () => {
+      window.location.href = '/index2.html';
+    });
+  }
+
+  /* === 좌측 로고의 TOD HERO 클릭 → TOD HERO 이동 === */
+  const heroLogo = document.getElementById('logoHero');
+  if (heroLogo) {
+    heroLogo.style.cursor = 'pointer';   // 클릭 느낌
+    heroLogo.addEventListener('click', () => {
+      window.location.href = '/index2.html';
+    });
+  }
 
   resize();
 })();
