@@ -23,6 +23,8 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 load_dotenv()
 client = OpenAI()
 
+app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
+
 # ===== STARTUP DIAG (딱 1번만 찍히는 진단 로그) =====
 @app.on_event("startup")
 def _startup_diag():
@@ -39,15 +41,10 @@ def _startup_diag():
         print("DNS lookup failed:", repr(e), flush=True)
     print("====================", flush=True)
 
-app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
+@app.on_event("startup")
+def _startup_stamp():
+    print("=== TODPLAY BACKEND STARTED /ping should exist ===", flush=True)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # ======================
 # 정적파일 (app 만든 뒤!)
@@ -464,6 +461,4 @@ def similarity_compare(inp: SimilarityIn):
     except Exception as e:
         raise HTTPException(400, f"similarity error: {e}")
 
-@app.on_event("startup")
-def _startup_stamp():
-    print("=== TODPLAY BACKEND STARTED /ping should exist ===", flush=True)
+
