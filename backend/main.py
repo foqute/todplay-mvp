@@ -447,3 +447,7 @@ def similarity_compare(inp: SimilarityIn):
         }
     except Exception as e:
         raise HTTPException(400, f"similarity error: {e}")
+
+@app.on_event("startup")
+def _startup_stamp():
+    print("=== TODPLAY BACKEND STARTED /ping should exist ===", flush=True)
