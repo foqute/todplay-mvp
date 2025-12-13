@@ -25,6 +25,21 @@ client = OpenAI()
 
 app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
+# ======================
+# CORS (프론트(mvp) -> 백엔드(beta) 호출 허용)
+# ======================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://todplay-mvp.onrender.com",   # 실제 베타 서비스(프론트)
+        "https://todplay-beta.onrender.com",  # 백엔드(지금 /analyze가 있는 쪽)
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # ===== STARTUP DIAG (딱 1번만 찍히는 진단 로그) =====
 @app.on_event("startup")
 def _startup_diag():
