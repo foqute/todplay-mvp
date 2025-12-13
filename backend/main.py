@@ -23,6 +23,22 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 load_dotenv()
 client = OpenAI()
 
+# ===== STARTUP DIAG (딱 1번만 찍히는 진단 로그) =====
+@app.on_event("startup")
+def _startup_diag():
+    key = os.getenv("OPENAI_API_KEY", "")
+    base = os.getenv("OPENAI_BASE_URL", "")
+    print("=== STARTUP DIAG ===", flush=True)
+    print("OPENAI_API_KEY present:", bool(key), "len:", len(key), flush=True)
+    print("OPENAI_BASE_URL:", base or "(default)", flush=True)
+    try:
+        import socket
+        ip = socket.gethostbyname("api.openai.com")
+        print("DNS api.openai.com ->", ip, flush=True)
+    except Exception as e:
+        print("DNS lookup failed:", repr(e), flush=True)
+    print("====================", flush=True)
+
 app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
 app.add_middleware(
