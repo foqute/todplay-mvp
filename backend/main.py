@@ -16,6 +16,8 @@ from openai import OpenAI
 # ======================
 BASE_DIR = Path(__file__).resolve().parents[1]
 FRONTEND_DIR = BASE_DIR / "frontend"
+ADMIN_DIR = BASE_DIR / "admin"
+
 
 # ======================
 # 초기 로드 & 클라이언트
@@ -75,7 +77,8 @@ def hero_page():
 
 @app.get("/index3.html")
 def mission_admin_page():
-    return FileResponse(FRONTEND_DIR / "index3.html", media_type="text/html")
+    return FileResponse(ADMIN_DIR / "index3.html", media_type="text/html")
+
 
 
 # ===== In-memory context store =====
