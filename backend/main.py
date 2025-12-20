@@ -73,6 +73,11 @@ app.mount("/img", StaticFiles(directory=FRONTEND_DIR / "img"), name="img")
 def hero_page():
     return FileResponse(FRONTEND_DIR / "index2.html", media_type="text/html")
 
+@app.get("/index3.html")
+def mission_admin_page():
+    return FileResponse(FRONTEND_DIR / "index3.html", media_type="text/html")
+
+
 # ===== In-memory context store =====
 CTX: Dict[str, Dict[str, Any]] = {}
 
