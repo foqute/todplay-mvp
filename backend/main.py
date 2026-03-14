@@ -2,6 +2,9 @@
 import os, base64, json, traceback
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from uuid import uuid4
+
 
 from fastapi import FastAPI, UploadFile, File, Form, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -363,6 +366,99 @@ def upsert_daily_mission_legacy(payload: MissionUpsert = Body(...)):
 @app.get("/missions/daily_missions.json")
 def read_missions():
     return _read_json()
+
+# ==========================
+# 🟡 코인 충전 / 잔액 관리 (베타)
+# ==========================
+COIN_DIR = ROOT / "coins"
+COIN_DIR.mkdir(parents=True, exist_ok=True)
+COIN_STATE_FILE = COIN_DIR / "coin_state.json"
+
+COIN_PACKAGES = [
+    {"id": "tod-25",  "name": "토드코인 25",  "price": 5500,  "coins": 25,  "badge": "입문용"},
+    {"id": "tod-70",  "name": "토드코인 70",  "price": 11000, "coins": 70,  "badge": "추천"},
+    {"id": "tod-170", "name": "토드코인 170", "price": 22000, "coins": 170, "badge": "가성비"},
+    {"id": "tod-280", "name": "토드코인 280", "price": 33000, "coins": 280, "badge": "집중형"},
+    {"id": "tod-500", "name": "토드코인 500", "price": 55000, "coins": 500, "badge": "헤비유저"},
+]
+COIN_PACK_MAP = {p["id"]: p for p in COIN_PACKAGES}
+
+class CoinChargeIn(BaseModel):
+    user_id: str
+    package_id: str
+
+
+def _read_coin_state() -> Dict[str, Any]:
+    if not COIN_STATE_FILE.exists():
+        return {"users": {}}
+    try:
+        data = json.loads(COIN_STATE_FILE.read_text("utf-8"))
+        if isinstance(data, dict) and isinstance(data.get("users"), dict):
+            return data
+    except Exception:
+        pass
+    return {"users": {}}
+
+
+def _write_coin_state(data: Dict[str, Any]):
+    COIN_STATE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+
+
+def _ensure_coin_user(data: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    uid = (user_id or "guest_default").strip() or "guest_default"
+    users = data.setdefault("users", {})
+    user = users.setdefault(uid, {"balance": 0, "history": []})
+    user["balance"] = int(user.get("balance", 0) or 0)
+    history = user.get("history")
+    if not isinstance(history, list):
+        user["history"] = []
+    return user
+
+
+@app.get("/api/coin/packages")
+def read_coin_packages():
+    return {"ok": True, "packages": COIN_PACKAGES}
+
+
+@app.get("/api/coin/state")
+def read_coin_state(user_id: str):
+    data = _read_coin_state()
+    user = _ensure_coin_user(data, user_id)
+    history = list(reversed(user.get("history", [])))[:12]
+    return {"ok": True, "user_id": user_id, "balance": int(user.get("balance", 0)), "history": history}
+
+
+@app.post("/api/coin/charge")
+def charge_coin(payload: CoinChargeIn = Body(...)):
+    package = COIN_PACK_MAP.get(payload.package_id)
+    if not package:
+        raise HTTPException(status_code=404, detail="unknown package_id")
+
+    data = _read_coin_state()
+    user = _ensure_coin_user(data, payload.user_id)
+    user["balance"] = int(user.get("balance", 0)) + int(package["coins"])
+
+    item = {
+        "tx_id": uuid4().hex[:12],
+        "kind": "beta_charge",
+        "package_id": package["id"],
+        "package_name": package["name"],
+        "price": int(package["price"]),
+        "coins": int(package["coins"]),
+        "balance_after": int(user["balance"]),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    user.setdefault("history", []).append(item)
+    user["history"] = user["history"][-50:]
+    _write_coin_state(data)
+
+    return {
+        "ok": True,
+        "user_id": payload.user_id,
+        "balance": int(user["balance"]),
+        "charged": item,
+        "history": list(reversed(user["history"]))[:12],
+    }
 
 # ==========================
 # 🟢 유사도 평가 (FAST) — 오늘의 드로잉 미션용

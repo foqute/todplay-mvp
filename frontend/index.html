@@ -388,6 +388,97 @@ input[type=file]{ display:none }
 }
 .toast.show{ opacity:1; transform:translateY(0) }
 
+
+/* === 코인 충전 모달 === */
+.coin-modal-backdrop{
+  position:fixed; inset:0; z-index:12000;
+  background:rgba(0,0,0,.56);
+  backdrop-filter:blur(4px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+.coin-modal{
+  width:min(720px, calc(100vw - 32px));
+  max-height:min(88vh, 920px);
+  overflow:auto;
+  background:linear-gradient(180deg, rgba(17,21,27,.98), rgba(13,16,22,.98));
+  border:1px solid #2f3846;
+  border-radius:18px;
+  box-shadow:0 24px 60px rgba(0,0,0,.45);
+  padding:20px;
+}
+.coin-modal-head{ display:flex; gap:14px; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+.coin-modal-head h3{ margin:0; font-size:22px; }
+.coin-modal-head p{ margin:6px 0 0; color:#a7b2bf; font-size:13px; }
+.coin-close-btn{
+  min-width:42px; height:42px; border-radius:12px;
+  background:#1b2230; border:1px solid #334055; color:#e8eef6; font-size:18px;
+}
+.coin-balance-box{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:rgba(37,99,235,.12); border:1px solid rgba(96,165,250,.28);
+  border-radius:14px; padding:14px 16px; margin-bottom:16px;
+}
+.coin-balance-box .label{ color:#adc3e6; font-size:12px; margin-bottom:3px; }
+.coin-balance-box .value{ font-size:28px; font-weight:800; letter-spacing:-.02em; }
+.coin-mini-note{ color:#8da0b7; font-size:12px; }
+.coin-pack-grid{
+  display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; margin-bottom:14px;
+}
+.coin-pack{
+  position:relative; text-align:left; padding:16px; border-radius:16px;
+  border:1px solid #2a3445; background:rgba(21,26,34,.92); color:#e8eef6;
+  transition:.18s ease; cursor:pointer;
+}
+.coin-pack:hover{ transform:translateY(-1px); border-color:#4b6ea8; }
+.coin-pack.active{ border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.18) inset; background:rgba(22,30,44,.98); }
+.coin-pack .badge{
+  position:absolute; top:12px; right:12px; font-size:11px; padding:4px 8px; border-radius:999px;
+  background:rgba(96,165,250,.16); color:#bfdbfe; border:1px solid rgba(96,165,250,.24);
+}
+.coin-pack .name{ font-size:15px; font-weight:700; margin-bottom:10px; }
+.coin-pack .price{ font-size:24px; font-weight:800; margin-bottom:6px; }
+.coin-pack .coins{ font-size:14px; color:#8ce7af; font-weight:700; }
+.coin-pack .unit{ margin-top:6px; font-size:12px; color:#94a3b8; }
+.coin-summary{
+  display:flex; gap:14px; align-items:center; justify-content:space-between;
+  background:rgba(12,16,22,.9); border:1px solid #273244; border-radius:14px;
+  padding:14px 16px; margin-bottom:12px;
+}
+.coin-summary .title{ font-size:12px; color:#9fb0c4; margin-bottom:5px; }
+.coin-summary .main{ font-size:18px; font-weight:700; }
+.coin-summary .sub{ font-size:12px; color:#8fa0b2; margin-top:3px; }
+.coin-cta-row{ display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
+.coin-cta-row button{ min-height:44px; border-radius:12px; padding:10px 16px; }
+.coin-primary{
+  background:linear-gradient(180deg, #2b74ff, #1f5fe0); border-color:transparent; color:#fff;
+  font-weight:700;
+}
+.coin-secondary{ background:#1b2230; border:1px solid #334055; }
+.coin-history{
+  margin-top:14px; background:rgba(12,16,22,.75); border:1px solid #253041; border-radius:14px; padding:12px;
+}
+.coin-history h4{ margin:0 0 10px; font-size:13px; color:#9fb0c4; }
+.coin-history-list{ display:flex; flex-direction:column; gap:8px; }
+.coin-history-item{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 12px; border-radius:10px; background:rgba(22,28,37,.88); border:1px solid #202938;
+}
+.coin-history-item .left strong{ display:block; font-size:13px; }
+.coin-history-item .left span{ display:block; font-size:12px; color:#93a2b7; margin-top:2px; }
+.coin-history-item .right{ text-align:right; }
+.coin-history-item .gain{ display:block; color:#8ce7af; font-weight:700; }
+.coin-history-item .remain{ display:block; font-size:12px; color:#93a2b7; margin-top:2px; }
+.coin-empty{ color:#93a2b7; font-size:12px; padding:6px 2px; }
+@media (max-width: 720px){
+  .coin-pack-grid{ grid-template-columns:1fr; }
+  .coin-summary, .coin-balance-box{ flex-direction:column; align-items:flex-start; }
+  .coin-cta-row{ flex-direction:column-reverse; }
+  .coin-cta-row button{ width:100%; }
+}
+
 /* === Drawing layers & HUD (우측) === */
 .draw-layer{
   position:absolute;
@@ -726,11 +817,216 @@ input[type=file]{ display:none }
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<div id="coinModalBackdrop" class="coin-modal-backdrop" aria-hidden="true">
+  <div class="coin-modal" role="dialog" aria-modal="true" aria-labelledby="coinModalTitle">
+    <div class="coin-modal-head">
+      <div>
+        <h3 id="coinModalTitle">토드코인 충전</h3>
+        <p>현재는 PG 연동 전 단계이므로 베타 충전 형태로 동작합니다. 구조는 그대로 두고, 나중에 실제 결제로 바꾸기 쉽게 설계했습니다.</p>
+      </div>
+      <button id="coinModalClose" class="coin-close-btn" type="button" aria-label="닫기">✕</button>
+    </div>
+
+    <div class="coin-balance-box">
+      <div>
+        <div class="label">현재 보유 코인</div>
+        <div class="value"><span id="coinBalanceValue">0</span> C</div>
+      </div>
+      <div class="coin-mini-note">패키지를 고르면 바로 아래에서 충전 수량과 단가를 확인할 수 있습니다.</div>
+    </div>
+
+    <div id="coinPackGrid" class="coin-pack-grid"></div>
+
+    <div class="coin-summary">
+      <div>
+        <div class="title">선택한 패키지</div>
+        <div id="coinSelectedName" class="main">토드코인 25</div>
+        <div id="coinSelectedMeta" class="sub">5,500원 · 1코인당 220원</div>
+      </div>
+      <div>
+        <div class="title">충전 후 예상 잔액</div>
+        <div id="coinExpectedBalance" class="main">25 C</div>
+        <div class="sub">실결제 연동 전까지는 테스트 충전으로 누적됩니다.</div>
+      </div>
+    </div>
+
+    <div class="coin-cta-row">
+      <button id="coinCancelBtn" class="coin-secondary" type="button">닫기</button>
+      <button id="coinConfirmBtn" class="coin-primary" type="button">선택 패키지 충전</button>
+    </div>
+
+    <div class="coin-history">
+      <h4>최근 충전 내역</h4>
+      <div id="coinHistoryList" class="coin-history-list"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 
 var guidesOn = false;
 
-const API = "https://todplay-beta.onrender.com";
+const API = (() => {
+  const h = location.hostname;
+  const isLocal = (h === "127.0.0.1" || h === "localhost");
+  return isLocal ? "http://127.0.0.1:8000" : "https://todplay-beta.onrender.com";
+})();
+
+
+const TOD_COIN_PACKS = [
+  { id:'tod-25',  name:'토드코인 25',  price:5500,  coins:25,  badge:'입문용' },
+  { id:'tod-70',  name:'토드코인 70',  price:11000, coins:70,  badge:'추천' },
+  { id:'tod-170', name:'토드코인 170', price:22000, coins:170, badge:'가성비' },
+  { id:'tod-280', name:'토드코인 280', price:33000, coins:280, badge:'집중형' },
+  { id:'tod-500', name:'토드코인 500', price:55000, coins:500, badge:'헤비유저' },
+];
+const TOD_USER_ID = (() => {
+  const key = 'tod_user_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = 'guest_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem(key, id);
+  }
+  return id;
+})();
+let coinState = { balance: 0, history: [], loaded: false };
+let selectedCoinPackId = TOD_COIN_PACKS[1].id;
+
+function formatWon(v){ return new Intl.NumberFormat('ko-KR').format(Number(v||0)) + '원'; }
+function unitPriceText(price, coins){ return `1코인당 ${Math.round(price / coins)}원`; }
+function selectedCoinPack(){ return TOD_COIN_PACKS.find(x => x.id === selectedCoinPackId) || TOD_COIN_PACKS[0]; }
+function syncCoinChip(){
+  const chip = document.getElementById('coinChip');
+  if (chip) chip.textContent = `C: ${Number(coinState.balance || 0)}`;
+}
+function renderCoinHistory(){
+  const wrap = document.getElementById('coinHistoryList');
+  if (!wrap) return;
+  const rows = Array.isArray(coinState.history) ? coinState.history.slice(0, 6) : [];
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="coin-empty">아직 충전 내역이 없습니다.</div>';
+    return;
+  }
+  wrap.innerHTML = rows.map(row => {
+    const dt = row.created_at ? new Date(row.created_at) : null;
+    const when = dt && !isNaN(dt) ? dt.toLocaleString('ko-KR') : '방금';
+    return `<div class="coin-history-item">
+      <div class="left">
+        <strong>${row.package_name || '토드코인 충전'}</strong>
+        <span>${when} · ${formatWon(row.price || 0)}</span>
+      </div>
+      <div class="right">
+        <span class="gain">+${Number(row.coins || 0)} C</span>
+        <span class="remain">잔액 ${Number(row.balance_after || 0)} C</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderCoinPacks(){
+  const grid = document.getElementById('coinPackGrid');
+  if (!grid) return;
+  grid.innerHTML = TOD_COIN_PACKS.map(pack => `
+    <button type="button" class="coin-pack ${pack.id === selectedCoinPackId ? 'active' : ''}" data-pack-id="${pack.id}">
+      <span class="badge">${pack.badge}</span>
+      <div class="name">${pack.name}</div>
+      <div class="price">${formatWon(pack.price)}</div>
+      <div class="coins">${pack.coins} 코인</div>
+      <div class="unit">${unitPriceText(pack.price, pack.coins)}</div>
+    </button>
+  `).join('');
+  grid.querySelectorAll('.coin-pack').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedCoinPackId = btn.dataset.packId || TOD_COIN_PACKS[0].id;
+      renderCoinPacks();
+      renderCoinSummary();
+    });
+  });
+}
+function renderCoinSummary(){
+  const pack = selectedCoinPack();
+  const bal = Number(coinState.balance || 0);
+  const balanceEl = document.getElementById('coinBalanceValue');
+  const nameEl = document.getElementById('coinSelectedName');
+  const metaEl = document.getElementById('coinSelectedMeta');
+  const expectedEl = document.getElementById('coinExpectedBalance');
+  if (balanceEl) balanceEl.textContent = String(bal);
+  if (nameEl) nameEl.textContent = pack.name;
+  if (metaEl) metaEl.textContent = `${formatWon(pack.price)} · ${unitPriceText(pack.price, pack.coins)}`;
+  if (expectedEl) expectedEl.textContent = `${bal + pack.coins} C`;
+  syncCoinChip();
+  renderCoinHistory();
+}
+async function fetchCoinState(){
+  const res = await fetch(`${API}/api/coin/state?user_id=${encodeURIComponent(TOD_USER_ID)}`, { cache:'no-store' });
+  if (!res.ok) throw new Error(`coin state ${res.status}`);
+  const data = await res.json();
+  coinState = {
+    balance: Number(data.balance || 0),
+    history: Array.isArray(data.history) ? data.history : [],
+    loaded: true,
+  };
+  renderCoinSummary();
+}
+async function refreshCoinState(silent=false){
+  try { await fetchCoinState(); }
+  catch (err) { console.error(err); if (!silent) toast('코인 정보를 불러오지 못했습니다.'); }
+}
+function openCoinModal(){
+  const bd = document.getElementById('coinModalBackdrop');
+  if (!bd) return;
+  bd.style.display = 'flex';
+  bd.setAttribute('aria-hidden', 'false');
+  renderCoinPacks();
+  renderCoinSummary();
+  refreshCoinState(true);
+}
+function closeCoinModal(){
+  const bd = document.getElementById('coinModalBackdrop');
+  if (!bd) return;
+  bd.style.display = 'none';
+  bd.setAttribute('aria-hidden', 'true');
+}
+async function chargeSelectedCoinPack(){
+  const pack = selectedCoinPack();
+  const btn = document.getElementById('coinConfirmBtn');
+  if (!pack || !btn) return;
+  const prev = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '충전 중…';
+  try {
+    const res = await fetch(`${API}/api/coin/charge`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ user_id: TOD_USER_ID, package_id: pack.id })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok !== true) throw new Error(data.detail || data.error || `charge ${res.status}`);
+    coinState.balance = Number(data.balance || 0);
+    coinState.history = Array.isArray(data.history) ? data.history : coinState.history;
+    renderCoinSummary();
+    closeCoinModal();
+    toast(`${pack.coins}코인이 충전되었습니다.`);
+  } catch (err) {
+    console.error(err);
+    toast('코인 충전에 실패했습니다.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prev;
+  }
+}
+function wireCoinUI(){
+  document.getElementById('btnCharge')?.addEventListener('click', openCoinModal);
+  document.getElementById('coinModalClose')?.addEventListener('click', closeCoinModal);
+  document.getElementById('coinCancelBtn')?.addEventListener('click', closeCoinModal);
+  document.getElementById('coinConfirmBtn')?.addEventListener('click', chargeSelectedCoinPack);
+  document.getElementById('coinModalBackdrop')?.addEventListener('click', (e) => { if (e.target?.id === 'coinModalBackdrop') closeCoinModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeCoinModal();
+  });
+  renderCoinPacks();
+  refreshCoinState(true);
+}
+
 
 // 오버레이 전역 상태 (한 번만 선언)
 var ovActive  = false,
@@ -984,8 +1280,34 @@ document.getElementById('btnStart').addEventListener('click', async ()=>{
     fd.append('context_id', contextId); fd.append('client_ts', String(Date.now()));
     askCount=0; const askEl=document.getElementById('ask'); askEl.disabled=false; document.getElementById('askSend').disabled=false;
     logBox.innerHTML='<p>분석 요청 중…</p>'; readyFB=false; hardStopTTS(); toast('분석 요청 중…');
-    const res=await fetch(`${API}/analyze`, { method:'POST', body: fd }); logBox.innerHTML='<p>피드백 생성 중…</p>';
-    const data=await res.json().catch(()=>({})); renderFeedback(data);
+    let res;
+try {
+  console.log("[TOD] analyze ->", `${API}/analyze`);
+  res = await fetch(`${API}/analyze`, { method:'POST', body: fd });
+  console.log("[TOD] analyze status:", res.status, res.statusText);
+} catch (e) {
+  logBox.innerHTML = `<p>서버 연결 실패: ${escapeHtml(e.message || String(e))}</p>`;
+  toast("서버 연결 실패");
+  return;
+}
+
+logBox.innerHTML = '<p>피드백 생성 중…</p>';
+
+let data;
+const ct = res.headers.get("content-type") || "";
+if (!res.ok) {
+  const t = await res.text().catch(()=> "");
+  logBox.innerHTML = `<p>서버 오류(${res.status}): ${escapeHtml(t.slice(0,300) || res.statusText)}</p>`;
+  toast(`서버 오류: ${res.status}`);
+  return;
+}
+if (ct.includes("application/json")) data = await res.json().catch(()=> ({}));
+else {
+  const t = await res.text().catch(()=> "");
+  data = { ok:false, notes:`JSON이 아닌 응답입니다.\ncontent-type=${ct}\n\n${t.slice(0,500)}` };
+}
+renderFeedback(data);
+
   }catch(err){ logBox.innerHTML='<p>오류가 발생했습니다. 다시 시도해 주세요.</p>'; toast('오류: ' + (err?.message||err)); }
 });
 function renderFeedback(data){
@@ -2037,6 +2359,7 @@ function openEditor(p, preset){
 
  /* === TOD HERO 이동 링크 (로고/미션) === */
 document.addEventListener('DOMContentLoaded', () => {
+  wireCoinUI();
   // 오늘의 드로잉 미션 버튼
   const missionBtn = document.getElementById('btnMission');
   if (missionBtn) {

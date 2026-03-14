@@ -81,7 +81,9 @@
 <script>
 (() => {
   /*** 1) 엔드포인트 ***/
-  const API = "https://todplay-beta.onrender.com";
+  const API = (location.hostname.includes("localhost"))
+  ? "http://127.0.0.1:8000"
+  : location.origin;
   const EP_SAVE = API + "/api/missions/daily_missions";
   const EP_JSON = API + "/missions/daily_missions.json";
 
