@@ -1,5 +1,5 @@
 # backend/main.py
-import os, base64, json, traceback
+import os, base64, json, traceback, hashlib, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
@@ -27,6 +27,8 @@ ADMIN_DIR = BASE_DIR / "admin"
 # ======================
 load_dotenv()
 client = OpenAI()
+MODEL_NAME = os.getenv("TODPLAY_MODEL", "gpt-6.2-sol").strip() or "gpt-6.2-sol"
+REASONING_EFFORT = os.getenv("TODPLAY_REASONING_EFFORT", "medium").strip() or "medium"
 
 app = FastAPI(title="TOD play - GPT5 wired", version="0.1.0")
 
@@ -97,8 +99,27 @@ def to_data_url(file: UploadFile) -> str:
     return f"data:{mime};base64,{b64}"
 
 def pick_model(user_mode: str) -> str:
-    # 필요하면 모드별로 분기
-    return "gpt-5"
+    return MODEL_NAME
+
+
+def make_safety_identifier(context_id: Optional[str]) -> str:
+    # Use a stable, privacy-preserving identifier for each anonymous app session.
+    stable_id = str(context_id or uuid4().hex).strip()
+    return hashlib.sha256(f"todplay:{stable_id}".encode("utf-8")).hexdigest()
+
+
+def log_response_metrics(label: str, response: Any, started_at: float) -> None:
+    usage = getattr(response, "usage", None)
+    input_tokens = getattr(usage, "input_tokens", None)
+    output_tokens = getattr(usage, "output_tokens", None)
+    output_details = getattr(usage, "output_tokens_details", None)
+    reasoning_tokens = getattr(output_details, "reasoning_tokens", None)
+    print(
+        f"[{label}] duration_ms={round((time.perf_counter() - started_at) * 1000)} "
+        f"input_tokens={input_tokens} output_tokens={output_tokens} "
+        f"reasoning_tokens={reasoning_tokens}",
+        flush=True,
+    )
 
 # =====================
 # 프롬프트
@@ -226,15 +247,20 @@ async def analyze(
             except Exception:
                 base_text += "\n\n추가 지침:\n" + str(hints)
 
+        safety_id = make_safety_identifier(context_id)
         print(f"[ANALYZE] OpenAI 호출 시작 - model={model}", flush=True)
+        started_at = time.perf_counter()
         resp = client.responses.create(
             model=model,
+            reasoning={"effort": REASONING_EFFORT},
+            safety_identifier=safety_id,
             input=[
                 {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
                 {"role": "user", "content": [{"type": "input_text", "text": base_text}, *content_images]},
             ],
         )
         print("[ANALYZE] OpenAI 응답 수신", flush=True)
+        log_response_metrics("ANALYZE", resp, started_at)
 
         notes_text = resp.output_text
         print(f"[ANALYZE] 응답 텍스트 길이={len(notes_text)}", flush=True)
@@ -306,13 +332,17 @@ async def chat(inp: ChatIn):
         user_blocks.append({"type": "input_text", "text": msg})
 
         model = pick_model(inp.mode)
+        started_at = time.perf_counter()
         resp = client.responses.create(
             model=model,
+            reasoning={"effort": REASONING_EFFORT},
+            safety_identifier=make_safety_identifier(cid),
             input=[
                 {"role": "system", "content": [{"type": "input_text", "text": CHAT_SYSTEM}]},
                 {"role": "user", "content": user_blocks},
             ],
         )
+        log_response_metrics("CHAT", resp, started_at)
         reply = resp.output_text
         CTX.setdefault(cid, {})["last_chat"] = msg
         return {"ok": True, "reply": reply}
