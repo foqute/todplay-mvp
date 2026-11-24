@@ -525,6 +525,9 @@ input[type=file]{ display:none }
   top:14px;
   left:50%;
   transform:translateX(-50%);
+  max-width:calc(100vw - 16px);
+  max-height:calc(100vh - 16px);
+  overflow:auto;
   background:rgba(15,18,22,.96);
   border:1px solid var(--line);
   border-radius:10px;
@@ -1296,8 +1299,9 @@ logBox.innerHTML = '<p>피드백 생성 중…</p>';
 let data;
 const ct = res.headers.get("content-type") || "";
 if (!res.ok) {
-  const t = await res.text().catch(()=> "");
-  logBox.innerHTML = `<p>서버 오류(${res.status}): ${escapeHtml(t.slice(0,300) || res.statusText)}</p>`;
+  const payload = await res.json().catch(()=> ({}));
+  const message = payload.detail || payload.error || `HTTP ${res.status} ${res.statusText}`;
+  logBox.innerHTML = `<p>AI 피드백 생성 실패: ${escapeHtml(message)}</p>`;
   toast(`서버 오류: ${res.status}`);
   return;
 }
@@ -1311,7 +1315,12 @@ renderFeedback(data);
   }catch(err){ logBox.innerHTML='<p>오류가 발생했습니다. 다시 시도해 주세요.</p>'; toast('오류: ' + (err?.message||err)); }
 });
 function renderFeedback(data){
-  if(!data?.ok){ toast('요청 형식 오류'); return; }
+  if(!data?.ok){
+    const message = data?.error || data?.detail || 'AI 피드백을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    logBox.innerHTML = `<p>AI 피드백 생성 실패: ${escapeHtml(message)}</p>`;
+    toast('피드백 생성 실패');
+    return;
+  }
   const notes = Array.isArray(data.notes) ? data.notes : String(data.notes||'').split('\n\n');
   const html = notes.map(block=>{
     const b=String(block).trim(); if(!b) return '';
@@ -2035,9 +2044,17 @@ function bakeToBase(){
     }, true);
     function move(e){ fp.style.left=(origin.x+(e.clientX-start.x))+'px'; fp.style.top=(origin.y+(e.clientY-start.y))+'px'; fp.style.transform='translateX(0)'; }
     function up(){ document.removeEventListener('mousemove',move); uiDragging=false;
-      const r=fp.getBoundingClientRect(); localStorage.setItem('tod_draw_fp_pos',JSON.stringify({x:r.left,y:r.top})); }
-    const pos=localStorage.getItem('tod_draw_fp_pos'); if(pos){ try{ const p=JSON.parse(pos); fp.style.left=p.x+'px'; fp.style.top=p.y+'px'; fp.style.transform='translateX(0)'; }catch{} }
+      const r=fp.getBoundingClientRect(); try{ localStorage.setItem('tod_draw_fp_pos',JSON.stringify({x:r.left,y:r.top})); }catch{} }
+    try{ const pos=localStorage.getItem('tod_draw_fp_pos'); if(pos){ const p=JSON.parse(pos); fp.style.left=p.x+'px'; fp.style.top=p.y+'px'; fp.style.transform='translateX(0)'; } }catch{}
   })();
+
+  function keepPaletteVisible(){
+    const r=fp.getBoundingClientRect();
+    const x=Math.max(8, Math.min(r.left, window.innerWidth-r.width-8));
+    const y=Math.max(8, Math.min(r.top, window.innerHeight-r.height-8));
+    fp.style.left=x+'px'; fp.style.top=y+'px'; fp.style.transform='translateX(0)';
+  }
+  window.addEventListener('resize', ()=>{ if(active) keepPaletteVisible(); });
 
   fp.querySelectorAll('.btn[data-tool]').forEach(b=> b.addEventListener('click', ()=>{ setTool(b.dataset.tool); fp.querySelectorAll('.btn[data-tool]').forEach(x=>x.classList.toggle('on',x===b)); }));
   const fpSize=fp.querySelector('#fpSize'), fpAlpha=fp.querySelector('#fpAlpha'), fpSense=fp.querySelector('#fpSense'), fpLayer=fp.querySelector('#fpLayer');
@@ -2095,6 +2112,7 @@ function bakeToBase(){
   function enter(){
     if(active) return; active = true;
     const fpEl = document.getElementById('tod-fp'); if(fpEl) fpEl.style.display = 'block';
+    keepPaletteVisible();
     layers.forEach(cv => cv.style.display = 'block'); cursorCv.style.display = 'block'; resetView(); resize();
     pane.dataset.prevBg = pane.style.backgroundColor || ''; pane.style.backgroundColor = DRAW_OUTSIDE_BG;
     pane.addEventListener('pointerdown', onPointerDown, true); window.addEventListener('pointermove', onPointerMove, true);

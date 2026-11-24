@@ -257,7 +257,10 @@ async def analyze(
     except Exception as e:
         print("[ANALYZE][ERROR]", repr(e), flush=True)
         traceback.print_exc()
-        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        raise HTTPException(
+            status_code=502,
+            detail="AI 피드백을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        ) from e
 
 # ==========================
 # /chat — 문맥 Q/A
